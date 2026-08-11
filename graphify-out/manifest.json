@@ -1,0 +1,62 @@
+{
+  "App.tsx": {
+    "mtime": 1786516105.3447442,
+    "ast_hash": "4f7860ea54a0dec00dfbc0c9c65d3478",
+    "semantic_hash": ""
+  },
+  "app.json": {
+    "mtime": 1786515897.2787719,
+    "ast_hash": "6c315b8b231433623c81a153689aaba7",
+    "semantic_hash": ""
+  },
+  "eslint.config.js": {
+    "mtime": 1786274222.627449,
+    "ast_hash": "560a864580ad8107fbbf8d6d452c82fe",
+    "semantic_hash": "560a864580ad8107fbbf8d6d452c82fe"
+  },
+  "package.json": {
+    "mtime": 1786515732.2539303,
+    "ast_hash": "05f4dcc58b2f0045cf4001a39d01d607",
+    "semantic_hash": ""
+  },
+  "tsconfig.json": {
+    "mtime": 1786372880.4315054,
+    "ast_hash": "70ae5b7763e0f990f5714771f5f0ec92",
+    "semantic_hash": "70ae5b7763e0f990f5714771f5f0ec92"
+  },
+  "utils/automationScripts.ts": {
+    "mtime": 1786384999.2970808,
+    "ast_hash": "a375e0fc46c383b1a618f232e5907528",
+    "semantic_hash": "a375e0fc46c383b1a618f232e5907528"
+  },
+  "utils/storage.ts": {
+    "mtime": 1786373852.2833354,
+    "ast_hash": "412cd644228b7e93f02d4168fe269539",
+    "semantic_hash": "412cd644228b7e93f02d4168fe269539"
+  },
+  "utils/updateManager.ts": {
+    "mtime": 1786485445.0548897,
+    "ast_hash": "eea28c55371c4ef32b7b9c7a065aa25b",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1786516918.7408226,
+    "ast_hash": "1733afa49ffc1fd67f0eec42df30f508",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1786516235.7711382,
+    "ast_hash": "f871164b95fe8cf1b6eaafce0ab4df05",
+    "semantic_hash": ""
+  },
+  "assets/images/splash-screen.png": {
+    "mtime": 1786387507.162956,
+    "ast_hash": "8e5c68981514b999263b97198a83e1f6",
+    "semantic_hash": ""
+  },
+  "BUILD-RULES.md": {
+    "mtime": 1786516666.2549481,
+    "ast_hash": "50a668023f13b5d99eff63538e4729a0",
+    "semantic_hash": ""
+  }
+}

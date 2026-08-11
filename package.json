@@ -8,7 +8,7 @@
     "lint": "expo lint",
     "eas:init": "eas init",
     "build:preview": "eas build --profile preview --platform android",
-    "build:production": "eas build --profile production --platform android",
+    "build:production": "EAS_BUILD_NO_EXPO_GO_WARNING=true eas build --profile production --platform android",
     "update:staging": "eas update --channel staging --message \"Staging update\"",
     "update:production": "eas update --channel production --message \"Production update\"",
     "promote:production": "eas promote --channel staging --to production"

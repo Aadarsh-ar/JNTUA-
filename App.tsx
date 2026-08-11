@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   Animated,
+  BackHandler,
   FlatList,
   Linking,
   Modal,
   Platform,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
+import * as SplashScreen from "expo-splash-screen";
 import {
   autoSubmitFirstSemesterScript,
   parseDetailedAttendanceAndGoHomeScript,
@@ -60,7 +63,7 @@ const COLORS = {
 
 const SERIF = Platform.OS === "ios" ? "Georgia" : "serif";
 const GITHUB_URL = "https://github.com/Chanikya-WebDev/JNTUA-Mobile-Attendance-App";
-const STALL_TIMEOUT_MS = 15000;
+const STALL_TIMEOUT_MS = 25000;
 
 const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
   Present: COLORS.success,
@@ -200,6 +203,8 @@ interface AppState {
   hasPreviousResult: boolean;
   previousResult: PreviousAttendanceResult | null;
   isSelectionError: boolean;
+  isSplashDismissed: boolean;
+  gatewayError: boolean;
 }
 
 const initialState: AppState = {
@@ -215,6 +220,8 @@ const initialState: AppState = {
   hasPreviousResult: false,
   previousResult: null,
   isSelectionError: false,
+  isSplashDismissed: false,
+  gatewayError: false,
 };
 
 function preserveSession(state: AppState, webViewKeyDelta: number): AppState {
@@ -223,6 +230,7 @@ function preserveSession(state: AppState, webViewKeyDelta: number): AppState {
     webViewKey: state.webViewKey + webViewKeyDelta,
     hasPreviousResult: state.hasPreviousResult,
     previousResult: state.previousResult,
+    isSplashDismissed: state.isSplashDismissed,
   };
 }
 
@@ -237,7 +245,10 @@ type AppAction =
   | { type: "SET_PREVIOUS_RESULT"; result: PreviousAttendanceResult | null }
   | { type: "HYDRATE_PREVIOUS_RESULT"; data: PreviousAttendanceResult }
   | { type: "SET_SELECTION_ERROR" }
-  | { type: "CLEAR_SELECTION_ERROR" };
+  | { type: "CLEAR_SELECTION_ERROR" }
+  | { type: "SET_SPLASH_DISMISSED" }
+  | { type: "SET_GATEWAY_ERROR" }
+  | { type: "CLEAR_GATEWAY_ERROR" };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -282,6 +293,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
         totalSubjects: action.data.subjectsData.length,
         fetchedIndices: action.data.subjectsData.map((_, i) => i),
       };
+    case "SET_SPLASH_DISMISSED":
+      return { ...state, isSplashDismissed: true };
+    case "SET_GATEWAY_ERROR":
+      return { ...state, gatewayError: true };
+    case "CLEAR_GATEWAY_ERROR":
+      return preserveSession(state, 0);
     default:
       return state;
   }
@@ -294,6 +311,11 @@ type MessagePayload =
   | { type: "SCRAPING_COMPLETE" };
 
 export default function Index() {
+  const splashPreventedRef = useRef(false);
+  if (!splashPreventedRef.current) {
+    splashPreventedRef.current = true;
+    void SplashScreen.preventAutoHideAsync();
+  }
   const webViewRef = useRef<WebViewType>(null);
   const [state, dispatch] = useReducer(appReducer, initialState);
   const update = useUpdateManager();
@@ -307,6 +329,7 @@ export default function Index() {
     webViewKey, isLoggedIn, studentInfo, totalSubjects, fetchedIndices,
     subjectsData, isScrapingFinished, selectedSubject,
     hasPreviousResult, previousResult, isSelectionError,
+    gatewayError,
   } = state;
 
   const stateRef = useRef(state);
@@ -315,6 +338,7 @@ export default function Index() {
   const persistedSigRef = useRef<string | null>(null);
 
   const handleFullReset = useCallback(() => dispatch({ type: "RESET" }), []);
+  const handleCloseModal = useCallback(() => dispatch({ type: "SET_SELECTED_SUBJECT", data: null }), []);
   const handlePreviousAttendance = useCallback(() => {
     if (previousResult) dispatch({ type: "HYDRATE_PREVIOUS_RESULT", data: previousResult });
   }, [previousResult]);
@@ -346,9 +370,69 @@ export default function Index() {
     } catch (err) {
       console.warn("WebView Message Error:", err);
     }
-  }, []);
+   }, []);
 
-  /* Aggregation math */
+   useEffect(() => {
+     let lastBackPress = 0;
+     let subscription: { remove: () => void } | null = null;
+     let popstateHandler: (() => void) | null = null;
+
+     const handleBackConsumed = (): boolean => {
+       const s = stateRef.current;
+
+       if (s.selectedSubject) {
+         dispatch({ type: "SET_SELECTED_SUBJECT", data: null });
+         return true;
+       }
+
+       if (s.isScrapingFinished && s.isLoggedIn) {
+         dispatch({ type: "RESET" });
+         return true;
+       }
+
+       if (s.isSelectionError && s.isLoggedIn && !s.isScrapingFinished) {
+         dispatch({ type: "CLEAR_SELECTION_ERROR" });
+         return true;
+       }
+
+       return false;
+     };
+
+     if (Platform.OS === "android") {
+       const onBackPress = (): boolean => {
+         if (handleBackConsumed()) return true;
+
+         const now = Date.now();
+         if (now - lastBackPress < 2000) {
+           BackHandler.exitApp();
+           return true;
+         }
+         lastBackPress = now;
+         ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
+         return true;
+       };
+
+       subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+     } else if (Platform.OS === "web") {
+       window.history.replaceState({ nav: "root" }, "", window.location.href);
+
+       popstateHandler = () => {
+         handleBackConsumed();
+         window.history.pushState({ nav: "root" }, "", window.location.href);
+       };
+
+       window.addEventListener("popstate", popstateHandler);
+     }
+
+     return () => {
+       subscription?.remove();
+       if (popstateHandler) {
+         window.removeEventListener("popstate", popstateHandler);
+       }
+     };
+   }, []);
+
+   /* Aggregation math */
   const { overallClasses, overallPresent, overallAbsent } = subjectsData.reduce(
     (acc, x) => ({
       overallClasses: acc.overallClasses + x.total,
@@ -423,8 +507,20 @@ export default function Index() {
           key={webViewKey}
           ref={webViewRef}
           source={{ uri: "https://jntuaceastudents.classattendance.in/" }}
+          userAgent="Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+          onLoadStart={() => {
+            if (stateRef.current.gatewayError) dispatch({ type: "CLEAR_GATEWAY_ERROR" });
+            if (!stateRef.current.isSplashDismissed) {
+              dispatch({ type: "SET_SPLASH_DISMISSED" });
+              void SplashScreen.hideAsync();
+            }
+          }}
           onNavigationStateChange={handleNavigationStateChange}
           onMessage={handleMessage}
+          onError={(event) => console.warn("WebView error:", event.nativeEvent.description)}
+          onHttpError={(event) => {
+            if (event.nativeEvent.statusCode === 502) dispatch({ type: "SET_GATEWAY_ERROR" });
+          }}
           javaScriptEnabled
           domStorageEnabled
           incognito={false}
@@ -436,6 +532,18 @@ export default function Index() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* ---------- 502 GATEWAY ERROR · opaque overlay with crab ---------- */}
+      {gatewayError && (
+        <View style={styles.overlayFull}>
+          <CrabScene />
+          <Text style={styles.syncTitle}>{"Main attendance\nwebsite is not working"}</Text>
+          <Text style={styles.syncSub}>The portal is temporarily unavailable (502).</Text>
+          <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
+            <Text style={styles.errorBtnText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ---------- SYNC · opaque overlay, no webpage flash ---------- */}
       {isLoggedIn && !isScrapingFinished && !isSelectionError && (
@@ -610,7 +718,7 @@ export default function Index() {
         visible={!!selectedSubject}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => dispatch({ type: "SET_SELECTED_SUBJECT", data: null })}
+        onRequestClose={handleCloseModal}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
@@ -624,7 +732,7 @@ export default function Index() {
                       Attendance log · {selectedSubject.present} attended, {selectedSubject.absent} missed
                     </Text>
                   </View>
-                  <TouchableOpacity style={styles.closeIcon} onPress={() => dispatch({ type: "SET_SELECTED_SUBJECT", data: null })}>
+                  <TouchableOpacity style={styles.closeIcon} onPress={handleCloseModal}>
                     <Text style={styles.closeIconText}>✕</Text>
                   </TouchableOpacity>
                 </View>

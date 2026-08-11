@@ -1,0 +1,270 @@
+{
+  "communities": {
+    "0": [
+      "app_appaction",
+      "app_appreducer",
+      "app_colors",
+      "app_crabscene",
+      "app_index",
+      "app_initialstate",
+      "app_messagepayload",
+      "app_preservesession",
+      "app_spike",
+      "app_status_color",
+      "app_styles",
+      "app_tsx_app",
+      "utils_automationscripts",
+      "utils_automationscripts_attendancerecord",
+      "utils_automationscripts_autosubmitfirstsemesterscript",
+      "utils_automationscripts_parsedetailedattendanceandgohomescript",
+      "utils_automationscripts_selectsubjectbyindexscript",
+      "utils_automationscripts_window",
+      "utils_updatemanager",
+      "utils_updatemanager_shouldcheckonmount",
+      "utils_updatemanager_updatemanager",
+      "utils_updatemanager_updatestatus",
+      "utils_updatemanager_useupdatemanager"
+    ],
+    "1": [
+      "expo",
+      "expo_build_properties",
+      "expo_constants",
+      "expo_file_system",
+      "expo_splash_screen",
+      "expo_updates",
+      "package_dependencies",
+      "package_dependencies_expo",
+      "package_dependencies_expo_build_properties",
+      "package_dependencies_expo_constants",
+      "package_dependencies_expo_file_system",
+      "package_dependencies_expo_splash_screen",
+      "package_dependencies_expo_updates",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_react_native",
+      "package_dependencies_react_native_web",
+      "package_dependencies_react_native_webview",
+      "react",
+      "react_dom",
+      "react_native",
+      "react_native_web",
+      "react_native_webview"
+    ],
+    "2": [
+      "app_eas_projectid",
+      "app_experiments_reactcompiler",
+      "app_expo",
+      "app_expo_experiments",
+      "app_expo_extra",
+      "app_expo_icon",
+      "app_expo_name",
+      "app_expo_newarchenabled",
+      "app_expo_orientation",
+      "app_expo_plugins",
+      "app_expo_runtimeversion",
+      "app_expo_scheme",
+      "app_expo_slug",
+      "app_expo_updates",
+      "app_expo_userinterfacestyle",
+      "app_expo_version",
+      "app_extra_eas",
+      "app_json_app",
+      "app_runtimeversion_policy",
+      "app_updates_checkautomatically",
+      "app_updates_fallbacktocachetimeout",
+      "app_updates_url"
+    ],
+    "3": [
+      "package",
+      "package_allowscripts",
+      "package_allowscripts_unrs_resolver_1_12_2",
+      "package_main",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_android",
+      "package_scripts_build_preview",
+      "package_scripts_build_production",
+      "package_scripts_eas_init",
+      "package_scripts_lint",
+      "package_scripts_promote_production",
+      "package_scripts_start",
+      "package_scripts_update_production",
+      "package_scripts_update_staging",
+      "package_version"
+    ],
+    "4": [
+      "app_appstate",
+      "utils_automationscripts_studentinfo",
+      "utils_automationscripts_subjectattendancedata",
+      "utils_storage",
+      "utils_storage_clearpreviousresult",
+      "utils_storage_getstorageuri",
+      "utils_storage_ispreviousattendanceresult",
+      "utils_storage_loadpreviousresult",
+      "utils_storage_previousattendanceresult",
+      "utils_storage_savepreviousresult"
+    ],
+    "5": [
+      "eslint",
+      "eslint_config_expo",
+      "package_devdependencies",
+      "package_devdependencies_eslint",
+      "package_devdependencies_eslint_config_expo",
+      "package_devdependencies_types_react",
+      "package_devdependencies_typescript",
+      "types_react",
+      "typescript"
+    ],
+    "6": [
+      "ref_expo_tsconfig_base",
+      "ref_ts",
+      "ref_tsx",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_extends",
+      "tsconfig_include"
+    ],
+    "7": [
+      "app_adaptiveicon_backgroundcolor",
+      "app_android_adaptiveicon",
+      "app_android_edgetoedgeenabled",
+      "app_android_package",
+      "app_android_permissions",
+      "app_android_predictivebackgestureenabled",
+      "app_expo_android",
+      "ref_internet"
+    ],
+    "8": [
+      "eslint_config",
+      "eslint_config_defineconfig",
+      "eslint_config_expoconfig"
+    ]
+  },
+  "cohesion": {
+    "0": 0.13438735177865613,
+    "1": 0.08695652173913043,
+    "2": 0.09090909090909091,
+    "3": 0.11764705882352941,
+    "4": 0.37777777777777777,
+    "5": 0.2222222222222222,
+    "6": 0.2222222222222222,
+    "7": 0.25,
+    "8": 0.6666666666666666
+  },
+  "gods": [
+    {
+      "id": "app_expo",
+      "label": "expo",
+      "degree": 15
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 10
+    },
+    {
+      "id": "app_index",
+      "label": "Index()",
+      "degree": 7
+    },
+    {
+      "id": "app_expo_android",
+      "label": "android",
+      "degree": 6
+    },
+    {
+      "id": "utils_automationscripts_studentinfo",
+      "label": "StudentInfo",
+      "degree": 5
+    },
+    {
+      "id": "utils_automationscripts_subjectattendancedata",
+      "label": "SubjectAttendanceData",
+      "degree": 5
+    },
+    {
+      "id": "utils_storage_previousattendanceresult",
+      "label": "PreviousAttendanceResult",
+      "degree": 5
+    },
+    {
+      "id": "utils_storage_loadpreviousresult",
+      "label": "loadPreviousResult()",
+      "degree": 5
+    },
+    {
+      "id": "app_appstate",
+      "label": "AppState",
+      "degree": 4
+    },
+    {
+      "id": "app_expo_updates",
+      "label": "updates",
+      "degree": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Index()",
+      "target": "loadPreviousResult()",
+      "source_files": [
+        "App.tsx",
+        "utils/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Index()",
+      "target": "savePreviousResult()",
+      "source_files": [
+        "App.tsx",
+        "utils/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "AppState",
+      "target": "StudentInfo",
+      "source_files": [
+        "App.tsx",
+        "utils/automationScripts.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "AppState",
+      "target": "SubjectAttendanceData",
+      "source_files": [
+        "App.tsx",
+        "utils/automationScripts.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "AppState",
+      "target": "PreviousAttendanceResult",
+      "source_files": [
+        "App.tsx",
+        "utils/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

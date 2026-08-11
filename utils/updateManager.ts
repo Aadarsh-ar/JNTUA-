@@ -24,7 +24,7 @@ const CHECK_TIMEOUT_MS = 30_000;
  * (where `expo-updates` is unavailable), `true` in production builds.
  */
 export function shouldCheckOnMount(): boolean {
-  return !__DEV__ && Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  return !__DEV__ && Constants.executionEnvironment === ExecutionEnvironment.Standalone;
 }
 
 /**

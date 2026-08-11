@@ -4,7 +4,7 @@
     "slug": "JNTUA-Attendance",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/splash-screen.jpg",
+    "icon": "./assets/images/splash-screen.png",
     "scheme": "jntuaattendance",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,7 +23,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-screen.jpg",
+          "image": "./assets/images/splash-screen.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -48,7 +48,7 @@
     "updates": {
       "url": "https://u.expo.dev/214d3218-11c5-4156-8a95-12843b24cd74",
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "NEVER"
     },
     "runtimeVersion": {
       "policy": "appVersion"
