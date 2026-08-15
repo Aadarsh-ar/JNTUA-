@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState, Dispatch } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { 
+  useFonts,
+  Outfit_400Regular,
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold
+} from "@expo-google-fonts/outfit";
 import {
   Animated,
   BackHandler,
   FlatList,
-  Linking,
   Modal,
   Platform,
   StyleSheet,
@@ -12,9 +20,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { TouchableOpacityProps } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import * as SplashScreen from "expo-splash-screen";
+import { BannerAdWrapper } from "./utils/BannerAdWrapper";
 import {
   autoSubmitFirstSemesterScript,
   parseDetailedAttendanceAndGoHomeScript,
@@ -29,40 +39,38 @@ import {
   savePreviousResult,
 } from "./utils/storage";
 import { shouldCheckOnMount, useUpdateManager } from "./utils/updateManager";
+import { useAppOpenAd } from "./utils/appOpenAd";
+import { useInterstitialAd } from "./utils/interstitialAd";
 
 /* ------------------------------------------------------------------ */
-/*  Claude editorial palette                                           */
+/*  Glassmorphism over Deep Ocean Gradient Palette                     */
 /* ------------------------------------------------------------------ */
 const COLORS = {
-  canvas: "#faf9f5",
-  surfaceCard: "#efe9de",
-  creamStrong: "#e8e0d2",
-  surfaceDark: "#181715",
-  primary: "#cc785c",
-  primaryActive: "#a9583e",
-  ink: "#141413",
-  body: "#3d3d3a",
-  muted: "#6c6a64",
-  mutedSoft: "#8e8b82",
-  hairline: "#e6dfd8",
-  hairlineSoft: "#ebe6df",
-  onDark: "#faf9f5",
-  onDarkSoft: "#a09d96",
-  success: "#3e8a52",
-  live: "#5db872",
-  error: "#c64545",
-  amber: "#e8a55a",
-  crab: "#d5795f",
-  handle: "#8a5a3b",
-  head: "#9aa0a6",
-  dTop: "#f2d8a0",
-  dMid: "#7d94a1",
-  dBase: "#4f6b78",
-  overlay: "rgba(20, 20, 19, 0.58)",
+  canvas: "transparent",
+  surfaceCard: "rgba(255, 255, 255, 0.12)",
+  creamStrong: "rgba(255, 255, 255, 0.2)",
+  surfaceDark: "rgba(0, 0, 0, 0.2)",
+  primary: "#22D3EE", // Cyan
+  primaryActive: "#06B6D4",
+  ink: "#FFFFFF",
+  body: "#F8FAFC",
+  muted: "#CBD5E1",
+  mutedSoft: "#94A3B8",
+  hairline: "rgba(255, 255, 255, 0.15)",
+  hairlineSoft: "rgba(255, 255, 255, 0.05)",
+  onDark: "#FFFFFF",
+  onDarkSoft: "#E2E8F0",
+  success: "#4ADE80",
+  live: "#22D3EE",
+  error: "#F87171",
+  amber: "#FBBF24",
+  overlay: "rgba(15, 23, 42, 0.6)",
 };
 
-const SERIF = Platform.OS === "ios" ? "Georgia" : "serif";
-const GITHUB_URL = "https://github.com/Chanikya-WebDev/JNTUA-Mobile-Attendance-App";
+const FONT_REGULAR = "Outfit_400Regular";
+const FONT_MEDIUM = "Outfit_500Medium";
+const FONT_SEMIBOLD = "Outfit_600SemiBold";
+const FONT_BOLD = "Outfit_700Bold";
 const STALL_TIMEOUT_MS = 25000;
 
 const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
@@ -72,122 +80,62 @@ const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Small building blocks                                              */
+/*  Animation Components                                               */
 /* ------------------------------------------------------------------ */
-function Spike({ size = 13, color = COLORS.primary }: { size?: number; color?: string }) {
+const AnimatedPressable = Animated.createAnimatedComponent(TouchableOpacity);
+
+function BouncyButton({ onPress, style, children, activeOpacity = 0.9, ...props }: TouchableOpacityProps & { children: React.ReactNode }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = (e: any) => {
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+    if (props.onPressIn) props.onPressIn(e);
+  };
+  const onPressOut = (e: any) => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+    if (props.onPressOut) props.onPressOut(e);
+  };
+  
   return (
-    <View style={{ width: size, height: size }}>
-      {[0, 45, 90, 135].map((a) => (
-        <View
-          key={a}
-          style={{
-            position: "absolute",
-            left: size / 2 - 1.5,
-            top: 0,
-            width: 3,
-            height: size,
-            borderRadius: 2,
-            backgroundColor: color,
-            transform: [{ rotate: `${a}deg` }],
-          }}
-        />
-      ))}
-    </View>
+    <AnimatedPressable
+      {...props}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={activeOpacity}
+      style={[style, { transform: [{ scale }] }]}
+    >
+      {children}
+    </AnimatedPressable>
   );
 }
 
-/* Claude crab — looping sync animation, pure Animated, no deps */
-function CrabScene() {
-  const walkX = useRef(new Animated.Value(-170)).current;
-  const hopY = useRef(new Animated.Value(0)).current;
-  const swing = useRef(new Animated.Value(14)).current;
-  const squish = useRef(new Animated.Value(1)).current;
-  const sparkOp = useRef(new Animated.Value(0)).current;
-  const sparkT = useRef(new Animated.Value(0)).current;
-  const blink = useRef(new Animated.Value(1)).current;
-  const legA = useRef(new Animated.Value(0)).current;
-  const legB = useRef(new Animated.Value(-2.5)).current;
-
+function PulsingText({ style, children }: { style?: any; children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    const t = (v: Animated.Value, to: number, d: number) =>
-      Animated.timing(v, { toValue: to, duration: d, useNativeDriver: true });
-    const anims = [
-      t(walkX, 0, 900),
-      Animated.loop(Animated.sequence([Animated.delay(200), t(hopY, -14, 420), t(hopY, 0, 420), Animated.delay(650)])),
-      Animated.loop(Animated.sequence([
-        t(swing, -8, 280), t(swing, 78, 200), t(squish, 0.5, 110),
-        Animated.parallel([t(squish, 1, 220), t(sparkOp, 1, 90), t(sparkT, 1, 420)]),
-        t(sparkOp, 0, 180), t(sparkT, 0, 0), t(swing, 14, 380), Animated.delay(420),
-      ])),
-      Animated.loop(Animated.sequence([Animated.delay(2600), t(blink, 0.12, 110), t(blink, 1, 110)])),
-      Animated.loop(Animated.parallel([
-        Animated.sequence([t(legA, -2.5, 220), t(legA, 0, 220)]),
-        Animated.sequence([t(legB, 0, 220), t(legB, -2.5, 220)]),
-      ])),
-    ];
-    anims.forEach((a) => a.start());
-    return () => anims.forEach((a) => a.stop());
-  }, [walkX, hopY, swing, squish, sparkOp, sparkT, blink, legA, legB]);
-
-  const rot = swing.interpolate({ inputRange: [-20, 90], outputRange: ["-20deg", "90deg"] });
-  const ringScale = sparkT.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.6] });
-  const ringOp = sparkT.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.8, 0] });
-  const sparks = [
-    { dx: 14, dy: -14, c: COLORS.primary },
-    { dx: 4, dy: -22, c: COLORS.amber },
-    { dx: -10, dy: -14, c: COLORS.primary },
-  ];
-
-  return (
-    <View style={{ width: 250, height: 150 }}>
-      <Animated.View style={{ position: "absolute", width: 250, height: 150, transform: [{ translateX: walkX }] }}>
-        <View style={{ position: "absolute", left: 58, top: 140, width: 80, height: 6, backgroundColor: COLORS.ink }} />
-        <Animated.View style={{ position: "absolute", width: 250, height: 150, transform: [{ translateY: hopY }] }}>
-          <View style={{ position: "absolute", left: 36, top: 92, width: 14, height: 16, backgroundColor: COLORS.crab }} />
-          <View style={{ position: "absolute", left: 50, top: 68, width: 88, height: 56, backgroundColor: COLORS.crab }} />
-          <View style={{ position: "absolute", left: 138, top: 90, width: 12, height: 16, backgroundColor: COLORS.crab }} />
-          <Animated.View style={{ position: "absolute", left: 66, top: 82, width: 8, height: 16, backgroundColor: COLORS.ink, transform: [{ scaleY: blink }] }} />
-          <Animated.View style={{ position: "absolute", left: 114, top: 82, width: 8, height: 16, backgroundColor: COLORS.ink, transform: [{ scaleY: blink }] }} />
-          <Animated.View style={{ position: "absolute", left: 64, top: 124, width: 10, height: 16, backgroundColor: COLORS.crab, transform: [{ translateY: legA }] }} />
-          <Animated.View style={{ position: "absolute", left: 82, top: 124, width: 10, height: 16, backgroundColor: COLORS.crab, transform: [{ translateY: legB }] }} />
-          <Animated.View style={{ position: "absolute", left: 108, top: 124, width: 10, height: 16, backgroundColor: COLORS.crab, transform: [{ translateY: legA }] }} />
-          <Animated.View style={{ position: "absolute", left: 126, top: 124, width: 10, height: 16, backgroundColor: COLORS.crab, transform: [{ translateY: legB }] }} />
-          <Animated.View style={{ position: "absolute", left: 131, top: 44, width: 28, height: 116, transform: [{ rotate: rot }] }}>
-            <View style={{ position: "absolute", left: 0, top: 0, width: 28, height: 15, backgroundColor: COLORS.head }} />
-            <View style={{ position: "absolute", left: 11, top: 12, width: 6, height: 46, backgroundColor: COLORS.handle }} />
-          </Animated.View>
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View style={{ position: "absolute", left: 209, top: 112, width: 28, height: 48, transform: [{ scaleY: squish }] }}>
-        <View style={{ position: "absolute", left: 7, top: 0, width: 14, height: 8, backgroundColor: COLORS.dTop }} />
-        <View style={{ position: "absolute", left: 0, top: 8, width: 28, height: 16, backgroundColor: COLORS.dMid }} />
-      </Animated.View>
-      <View style={{ position: "absolute", left: 200, top: 136, width: 46, height: 10, backgroundColor: COLORS.dBase }} />
-
-      <Animated.View
-        style={{
-          position: "absolute", left: 205, top: 95, width: 30, height: 30, borderRadius: 15,
-          borderWidth: 2, borderColor: COLORS.primary, opacity: ringOp, transform: [{ scale: ringScale }],
-        }}
-      />
-      {sparks.map((s, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            position: "absolute", left: 216, top: 100, width: 6, height: 6, backgroundColor: s.c, opacity: sparkOp,
-            transform: [
-              { translateX: sparkT.interpolate({ inputRange: [0, 1], outputRange: [0, s.dx] }) },
-              { translateY: sparkT.interpolate({ inputRange: [0, 1], outputRange: [0, s.dy] }) },
-            ],
-          }}
-        />
-      ))}
-    </View>
-  );
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, [opacity]);
+  return <Animated.Text style={[style, { opacity }]}>{children}</Animated.Text>;
 }
 
-/* ------------------------------------------------------------------ */
+function FadeInView({ style, children }: { style?: any; children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(15)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 400, useNativeDriver: true })
+    ]).start();
+  }, [opacity, translateY]);
+  return <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>{children}</Animated.View>;
+}
+
+
+
 /*  State — unchanged workflow                                         */
 /* ------------------------------------------------------------------ */
 interface AppState {
@@ -310,7 +258,79 @@ type MessagePayload =
   | { type: "ATTENDANCE_ITEM"; data: SubjectAttendanceData }
   | { type: "SCRAPING_COMPLETE" };
 
-export default function Index() {
+interface AnimatedSubjectCardProps {
+  item: SubjectAttendanceData;
+  index: number;
+  dispatch: Dispatch<AppAction>;
+  getAttendanceColor: (percentage: number) => string;
+  calculateCanSkip: (present: number, total: number) => number;
+  calculateClassesToReach75: (present: number, total: number) => number;
+}
+
+function AnimatedSubjectCard({ item, index, dispatch, getAttendanceColor, calculateCanSkip, calculateClassesToReach75 }: AnimatedSubjectCardProps) {
+  const translateY = useRef(new Animated.Value(50)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 400,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 400,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
+  }, [index, opacity, translateY]);
+
+  const pVal = parseFloat(item.percentage);
+  const isLow = pVal < 75;
+  const canSkip = calculateCanSkip(item.present, item.total);
+  const classesToReach75 = calculateClassesToReach75(item.present, item.total);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      <BouncyButton
+        style={styles.subjectCard}
+        activeOpacity={0.75}
+        onPress={() => dispatch({ type: "SET_SELECTED_SUBJECT", data: item })}
+      >
+        <View style={styles.subjectRow1}>
+          <Text style={styles.subjectName} numberOfLines={2}>{item.subjectName}</Text>
+          <Text style={[styles.subjectPct, { color: getAttendanceColor(pVal) }]}>{item.percentage}%</Text>
+        </View>
+        <View style={styles.subjectRow2}>
+          <Text style={styles.shortStats}>
+            Tot <Text style={styles.shortStatsBold}>{item.total}</Text>
+            {" · "}Att <Text style={styles.shortStatsBold}>{item.present}</Text>
+            {" · "}Abs <Text style={styles.shortStatsBold}>{item.absent}</Text>
+          </Text>
+          <View style={[styles.badgeCoral, canSkip <= 0 && styles.badgeMute]}>
+            <Text style={[styles.badgeCoralText, canSkip <= 0 && styles.badgeMuteText]}>
+              {isLow
+                ? `Attend ${classesToReach75} more`
+                : canSkip > 0
+                  ? `Skip ${canSkip} ${canSkip === 1 ? "class" : "classes"}`
+                  : "Keep attending"}
+            </Text>
+          </View>
+        </View>
+      </BouncyButton>
+    </Animated.View>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+  });
+
   const splashPreventedRef = useRef(false);
   if (!splashPreventedRef.current) {
     splashPreventedRef.current = true;
@@ -318,15 +338,26 @@ export default function Index() {
   }
   const webViewRef = useRef<WebViewType>(null);
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [adFailed, setAdFailed] = useState(false);
   const update = useUpdateManager();
   const { checkForUpdate } = update;
+  useAppOpenAd(state.isSplashDismissed);
+  const { tryShowInterstitial } = useInterstitialAd();
 
   useEffect(() => {
     if (shouldCheckOnMount()) void checkForUpdate();
-  }, [checkForUpdate]);
+    
+    // Fallback to hide splash screen in case WebView onLoadStart doesn't fire
+    setTimeout(() => {
+      if (!stateRef.current.isSplashDismissed && fontsLoaded) {
+        dispatch({ type: "SET_SPLASH_DISMISSED" });
+        void SplashScreen.hideAsync();
+      }
+    }, 3500);
+  }, [checkForUpdate, fontsLoaded]);
 
   const {
-    webViewKey, isLoggedIn, studentInfo, totalSubjects, fetchedIndices,
+    webViewKey, isLoggedIn, studentInfo,
     subjectsData, isScrapingFinished, selectedSubject,
     hasPreviousResult, previousResult, isSelectionError,
     gatewayError,
@@ -338,7 +369,10 @@ export default function Index() {
   const persistedSigRef = useRef<string | null>(null);
 
   const handleFullReset = useCallback(() => dispatch({ type: "RESET" }), []);
-  const handleCloseModal = useCallback(() => dispatch({ type: "SET_SELECTED_SUBJECT", data: null }), []);
+  const handleCloseModal = useCallback(() => {
+    dispatch({ type: "SET_SELECTED_SUBJECT", data: null });
+    tryShowInterstitial();
+  }, [tryShowInterstitial]);
   const handlePreviousAttendance = useCallback(() => {
     if (previousResult) dispatch({ type: "HYDRATE_PREVIOUS_RESULT", data: previousResult });
   }, [previousResult]);
@@ -488,10 +522,10 @@ export default function Index() {
     return () => clearInterval(interval);
   }, [isLoggedIn, isScrapingFinished]);
 
-  const syncPct = totalSubjects ? Math.round((fetchedIndices.length / totalSubjects) * 100) : 0;
+
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={["#0F172A", "#0891B2"]} style={styles.container}>
       {(update.status === "checking" || update.status === "applying") && (
         <View style={styles.updateBanner}>
           <Text style={styles.updateBannerText}>
@@ -510,7 +544,7 @@ export default function Index() {
           userAgent="Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           onLoadStart={() => {
             if (stateRef.current.gatewayError) dispatch({ type: "CLEAR_GATEWAY_ERROR" });
-            if (!stateRef.current.isSplashDismissed) {
+            if (!stateRef.current.isSplashDismissed && fontsLoaded) {
               dispatch({ type: "SET_SPLASH_DISMISSED" });
               void SplashScreen.hideAsync();
             }
@@ -526,17 +560,16 @@ export default function Index() {
           incognito={false}
         />
         {!isLoggedIn && hasPreviousResult && (
-          <TouchableOpacity style={styles.prevBtn} onPress={handlePreviousAttendance} activeOpacity={0.88}>
-            <Text style={styles.prevBtnIcon}>↺</Text>
+          <BouncyButton style={styles.prevBtn} onPress={handlePreviousAttendance} activeOpacity={0.88}>
+            <Ionicons name="time" size={18} color={COLORS.onDark} style={{ marginRight: 6 }} />
             <Text style={styles.prevBtnText}>Previous Attendance</Text>
-          </TouchableOpacity>
+          </BouncyButton>
         )}
       </View>
 
       {/* ---------- 502 GATEWAY ERROR · opaque overlay with crab ---------- */}
       {gatewayError && (
         <View style={styles.overlayFull}>
-          <CrabScene />
           <Text style={styles.syncTitle}>{"Main attendance\nwebsite is not working"}</Text>
           <Text style={styles.syncSub}>The portal is temporarily unavailable (502).</Text>
           <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
@@ -548,17 +581,7 @@ export default function Index() {
       {/* ---------- SYNC · opaque overlay, no webpage flash ---------- */}
       {isLoggedIn && !isScrapingFinished && !isSelectionError && (
         <View style={styles.overlayFull}>
-          <CrabScene />
-          <Text style={styles.syncEyebrow}>SYNCING</Text>
-          <Text style={styles.syncTitle}>{"Reading your\nsemester"}</Text>
-          <Text style={styles.syncSub}>
-            {totalSubjects ? `Processed ${fetchedIndices.length} of ${totalSubjects} subjects` : "Authenticating session…"}
-          </Text>
-          <Text style={styles.syncPct}>
-            {syncPct}
-            <Text style={styles.syncPctSign}>%</Text>
-          </Text>
-          <Text style={styles.syncFine}>Secure session · jntuaceastudents.classattendance.in</Text>
+          <PulsingText style={styles.syncTitle}>{"Loading attendance..."}</PulsingText>
         </View>
       )}
 
@@ -567,33 +590,33 @@ export default function Index() {
         <View style={styles.overlayFull}>
           <View style={styles.errorCard}>
             <TouchableOpacity style={styles.closeIcon} onPress={() => dispatch({ type: "CLEAR_SELECTION_ERROR" })}>
-              <Text style={styles.closeIconText}>✕</Text>
+              <Ionicons name="close" size={20} color={COLORS.body} />
             </TouchableOpacity>
-            <Text style={styles.errorIcon}>!</Text>
+            <Ionicons name="alert-circle" size={40} color={COLORS.error} style={{ marginBottom: 10 }} />
             <Text style={styles.errorTitle}>Couldn’t load subjects right now</Text>
             <Text style={styles.errorBody}>
               The attendance portal was recently updated, so the app can’t detect your semester or
               subjects at the moment. This is a temporary issue — we’re working on a fix.
             </Text>
-            <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
+            <BouncyButton style={styles.errorBtn} onPress={handleFullReset}>
               <Text style={styles.errorBtnText}>Try again</Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       )}
 
       {/* ---------- DASHBOARD · profile + overall scroll with the list ---------- */}
       {isLoggedIn && isScrapingFinished && (
-        <View style={styles.dashboardContainer}>
+        <FadeInView style={styles.dashboardContainer}>
           <View style={styles.sigRow}>
             <View style={styles.wordmark}>
-              <Spike />
-              <Text style={styles.wordmarkText}>Chanikya</Text>
-              <Text style={styles.wordmarkRole}>·dev</Text>
+              <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 2 }} />
+              <Text style={styles.wordmarkText}>JNTUA</Text>
+              <Text style={styles.wordmarkRole}>·Attendance</Text>
             </View>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleFullReset} activeOpacity={0.7}>
-              <Text style={styles.iconBtnText}>↺</Text>
-            </TouchableOpacity>
+            <BouncyButton style={styles.iconBtn} onPress={handleFullReset} activeOpacity={0.7}>
+              <Ionicons name="refresh" size={18} color={COLORS.body} />
+            </BouncyButton>
           </View>
 
           <FlatList
@@ -605,7 +628,7 @@ export default function Index() {
             ListHeaderComponent={
               <View>
                 {studentInfo && (
-                  <View style={styles.profileCard}>
+                  <BouncyButton style={styles.profileCard} activeOpacity={0.9}>
                     <Text style={styles.profileName} numberOfLines={1}>{studentInfo.name}</Text>
                     <View style={styles.profileMetaRow}>
                       <View style={styles.liveDot} />
@@ -613,7 +636,7 @@ export default function Index() {
                         {studentInfo.admissionNo} • {studentInfo.className}
                       </Text>
                     </View>
-                  </View>
+                  </BouncyButton>
                 )}
 
                 <View style={styles.overallCard}>
@@ -663,54 +686,30 @@ export default function Index() {
               </View>
             }
             ListFooterComponent={
-              <View style={styles.footBand}>
-                <Spike size={15} color={COLORS.onDark} />
-                <Text style={styles.footTitle}>Open to Contribute</Text>
-                <Text style={styles.footSub}>{"Found a bug or have an idea?\nThis app is open source."}</Text>
-                <TouchableOpacity style={styles.btnCoral} activeOpacity={0.85} onPress={() => Linking.openURL(GITHUB_URL)}>
-                  <Text style={styles.btnCoralText}>View on GitHub</Text>
-                </TouchableOpacity>
-                <Text style={styles.footCredit}>
-                  Crafted by <Text style={styles.footCreditName}>J Chanikya</Text> · 2026
-                </Text>
+              <View>
+                <View style={styles.footBand}>
+                  <Ionicons name="star" size={18} color={COLORS.onDark} />
+                  <Text style={styles.footTitle}>JNTUA Attendance</Text>
+                </View>
               </View>
             }
-            renderItem={({ item }) => {
-              const pVal = parseFloat(item.percentage);
-              const isLow = pVal < 75;
-              const canSkip = calculateCanSkip(item.present, item.total);
-              const classesToReach75 = calculateClassesToReach75(item.present, item.total);
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.subjectCard}
-                  onPress={() => dispatch({ type: "SET_SELECTED_SUBJECT", data: item })}
-                >
-                  <View style={styles.subjectRow1}>
-                    <Text style={styles.subjectName} numberOfLines={2}>{item.subjectName}</Text>
-                    <Text style={[styles.subjectPct, { color: getAttendanceColor(pVal) }]}>{item.percentage}%</Text>
-                  </View>
-                  <View style={styles.subjectRow2}>
-                    <Text style={styles.shortStats}>
-                      Tot <Text style={styles.shortStatsBold}>{item.total}</Text>
-                      {" · "}Att <Text style={styles.shortStatsBold}>{item.present}</Text>
-                      {" · "}Abs <Text style={styles.shortStatsBold}>{item.absent}</Text>
-                    </Text>
-                    <View style={[styles.badgeCoral, canSkip <= 0 && styles.badgeMute]}>
-                      <Text style={[styles.badgeCoralText, canSkip <= 0 && styles.badgeMuteText]}>
-                        {isLow
-                          ? `Attend ${classesToReach75} more`
-                          : canSkip > 0
-                            ? `Skip ${canSkip} ${canSkip === 1 ? "class" : "classes"}`
-                            : "Keep attending"}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
+            renderItem={({ item, index }) => (
+              <AnimatedSubjectCard
+                item={item}
+                index={index}
+                dispatch={dispatch}
+                getAttendanceColor={getAttendanceColor}
+                calculateCanSkip={calculateCanSkip}
+                calculateClassesToReach75={calculateClassesToReach75}
+              />
+            )}
           />
-        </View>
+          {!adFailed && (
+            <View style={styles.adBanner}>
+              <BannerAdWrapper onAdFailedToLoad={() => setAdFailed(true)} />
+            </View>
+          )}
+        </FadeInView>
       )}
 
       {/* ---------- DATE LOG SHEET ---------- */}
@@ -733,7 +732,7 @@ export default function Index() {
                     </Text>
                   </View>
                   <TouchableOpacity style={styles.closeIcon} onPress={handleCloseModal}>
-                    <Text style={styles.closeIconText}>✕</Text>
+                    <Ionicons name="close" size={20} color={COLORS.body} />
                   </TouchableOpacity>
                 </View>
                 <FlatList
@@ -761,7 +760,7 @@ export default function Index() {
           </View>
         </View>
       </Modal>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -806,16 +805,16 @@ const styles = StyleSheet.create({
   overlayFull: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    backgroundColor: COLORS.canvas,
+    backgroundColor: "#0F172A",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 28,
   },
 
   syncEyebrow: { fontSize: 11, fontWeight: "500", letterSpacing: 1.6, color: COLORS.primary, marginTop: 20 },
-  syncTitle: { fontFamily: SERIF, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink, lineHeight: 31, marginTop: 10, textAlign: "center" },
-  syncSub: { fontSize: 12.5, color: COLORS.muted, marginTop: 8 },
-  syncPct: { fontFamily: SERIF, fontSize: 54, letterSpacing: -2, color: COLORS.primary, lineHeight: 60, marginTop: 16 },
+  syncTitle: { fontFamily: FONT_BOLD, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink, lineHeight: 31, marginTop: 10, textAlign: "center" },
+  syncSub: { fontFamily: FONT_REGULAR, fontSize: 12.5, color: COLORS.muted, marginTop: 8 },
+  syncPct: { fontFamily: FONT_BOLD, fontSize: 54, letterSpacing: -2, color: COLORS.primary, lineHeight: 60, marginTop: 16 },
   syncPctSign: { fontSize: 24, color: COLORS.mutedSoft },
   syncFine: { fontSize: 10.5, color: COLORS.mutedSoft, marginTop: 14, letterSpacing: 0.3 },
 
@@ -832,10 +831,10 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.error, color: COLORS.onDark,
     fontSize: 20, fontWeight: "700", textAlign: "center", lineHeight: 34, overflow: "hidden",
   },
-  errorTitle: { fontFamily: SERIF, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, marginTop: 12, textAlign: "center" },
-  errorBody: { fontSize: 13, lineHeight: 19, color: COLORS.muted, marginTop: 8, textAlign: "center" },
+  errorTitle: { fontFamily: FONT_BOLD, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, marginTop: 12, textAlign: "center" },
+  errorBody: { fontFamily: FONT_REGULAR, fontSize: 13, lineHeight: 19, color: COLORS.muted, marginTop: 8, textAlign: "center" },
   errorBtn: { backgroundColor: COLORS.error, borderRadius: 8, paddingVertical: 12, alignSelf: "stretch", alignItems: "center", marginTop: 16 },
-  errorBtnText: { color: COLORS.onDark, fontWeight: "600", fontSize: 14 },
+  errorBtnText: { fontFamily: FONT_MEDIUM, color: COLORS.onDark, fontSize: 14 },
   closeIcon: {
     width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: COLORS.hairline,
     backgroundColor: COLORS.canvas, alignItems: "center", justifyContent: "center",
@@ -846,8 +845,8 @@ const styles = StyleSheet.create({
   dashboardContainer: { flex: 1, paddingHorizontal: 20 },
   sigRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, marginBottom: 4 },
   wordmark: { flexDirection: "row", alignItems: "center" },
-  wordmarkText: { fontFamily: SERIF, fontStyle: "italic", fontSize: 23, letterSpacing: -0.4, color: COLORS.ink, marginLeft: 8 },
-  wordmarkRole: { fontSize: 10, fontWeight: "500", letterSpacing: 1.4, color: COLORS.mutedSoft, marginLeft: 7, marginTop: 4 },
+  wordmarkText: { fontFamily: FONT_BOLD, fontStyle: "italic", fontSize: 23, letterSpacing: -0.4, color: COLORS.ink, marginLeft: 8 },
+  wordmarkRole: { fontFamily: FONT_MEDIUM, fontSize: 10, letterSpacing: 1.4, color: COLORS.mutedSoft, marginLeft: 7, marginTop: 4 },
   iconBtn: {
     width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.canvas,
     borderWidth: 1, borderColor: COLORS.hairline, alignItems: "center", justifyContent: "center",
@@ -855,29 +854,29 @@ const styles = StyleSheet.create({
   iconBtnText: { fontSize: 15, color: COLORS.body, fontWeight: "600" },
 
   profileCard: { backgroundColor: COLORS.surfaceDark, borderRadius: 12, padding: 18, marginBottom: 12 },
-  profileName: { fontFamily: SERIF, fontSize: 24, letterSpacing: -0.5, color: COLORS.onDark },
+  profileName: { fontFamily: FONT_SEMIBOLD, fontSize: 24, letterSpacing: -0.5, color: COLORS.onDark },
   profileMetaRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live, marginRight: 7 },
-  profileMeta: { fontSize: 12.5, color: COLORS.onDarkSoft },
+  profileMeta: { fontFamily: FONT_REGULAR, fontSize: 12.5, color: COLORS.onDarkSoft },
 
   overallCard: { backgroundColor: COLORS.surfaceCard, borderRadius: 12, padding: 20, marginBottom: 12 },
   overallTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   eyebrowSm: { fontSize: 10.5, fontWeight: "500", letterSpacing: 1.5, color: COLORS.muted },
   badgePill: { backgroundColor: COLORS.creamStrong, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 4 },
-  badgePillText: { fontSize: 11, fontWeight: "500", color: COLORS.ink },
-  bigPct: { fontFamily: SERIF, fontSize: 52, letterSpacing: -1.5, color: COLORS.ink, lineHeight: 56, marginVertical: 4 },
-  bigPctSign: { fontSize: 24, color: COLORS.muted },
+  badgePillText: { fontFamily: FONT_MEDIUM, fontSize: 11, color: COLORS.ink },
+  bigPct: { fontFamily: FONT_BOLD, fontSize: 52, letterSpacing: -1.5, color: COLORS.ink, lineHeight: 56, marginVertical: 4 },
+  bigPctSign: { fontFamily: FONT_MEDIUM, fontSize: 24, color: COLORS.muted },
   miniStats: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COLORS.hairline, paddingTop: 12, marginTop: 8 },
   miniStat: { flex: 1, alignItems: "center" },
-  miniStatNum: { fontFamily: SERIF, fontSize: 18, color: COLORS.body },
-  miniStatLabel: { fontSize: 9.5, fontWeight: "500", letterSpacing: 1.2, color: COLORS.muted, marginTop: 3 },
+  miniStatNum: { fontFamily: FONT_SEMIBOLD, fontSize: 18, color: COLORS.body },
+  miniStatLabel: { fontFamily: FONT_MEDIUM, fontSize: 9.5, letterSpacing: 1.2, color: COLORS.muted, marginTop: 3 },
   miniDivider: { width: 1, backgroundColor: COLORS.hairlineSoft },
   skipRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: COLORS.hairline, marginTop: 12, paddingTop: 12 },
-  skipTitle: { fontSize: 13, fontWeight: "500", color: COLORS.body },
-  skipSub: { fontSize: 10.5, color: COLORS.muted, marginTop: 2 },
+  skipTitle: { fontFamily: FONT_MEDIUM, fontSize: 13, color: COLORS.body },
+  skipSub: { fontFamily: FONT_REGULAR, fontSize: 10.5, color: COLORS.muted, marginTop: 2 },
 
   badgeCoral: { backgroundColor: COLORS.primary, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 5 },
-  badgeCoralText: { fontSize: 11, fontWeight: "500", letterSpacing: 0.4, color: COLORS.onDark },
+  badgeCoralText: { fontFamily: FONT_MEDIUM, fontSize: 11, letterSpacing: 0.4, color: COLORS.onDark },
   badgeMute: { backgroundColor: COLORS.creamStrong },
   badgeMuteText: { color: COLORS.muted },
 
@@ -885,37 +884,43 @@ const styles = StyleSheet.create({
   listCount: { fontSize: 12, color: COLORS.mutedSoft },
 
   subjectCard: {
-    backgroundColor: COLORS.canvas, borderWidth: 1, borderColor: COLORS.hairline,
+    backgroundColor: COLORS.surfaceCard, borderWidth: 1, borderColor: COLORS.hairline,
     borderRadius: 12, padding: 16, marginBottom: 10,
   },
   subjectRow1: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   subjectName: { flex: 1, fontSize: 14.5, fontWeight: "500", color: COLORS.ink, lineHeight: 20, marginRight: 10 },
-  subjectPct: { fontFamily: SERIF, fontSize: 24, letterSpacing: -0.5, color: COLORS.ink },
+  subjectPct: { fontFamily: FONT_BOLD, fontSize: 24, letterSpacing: -0.5, color: COLORS.ink },
   subjectRow2: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
   shortStats: { fontSize: 11.5, color: COLORS.muted },
   shortStatsBold: { fontWeight: "600", color: COLORS.body },
 
+  adBanner: {
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingVertical: 4,
+  },
+
   footBand: { backgroundColor: COLORS.surfaceDark, borderRadius: 12, padding: 24, alignItems: "center", marginTop: 6, marginBottom: 8 },
-  footTitle: { fontFamily: SERIF, fontSize: 21, letterSpacing: -0.3, color: COLORS.onDark, marginTop: 10 },
-  footSub: { fontSize: 12.5, lineHeight: 19, color: COLORS.onDarkSoft, marginTop: 8, textAlign: "center" },
+  footTitle: { fontFamily: FONT_SEMIBOLD, fontSize: 21, letterSpacing: -0.3, color: COLORS.onDark, marginTop: 10 },
+  footSub: { fontFamily: FONT_REGULAR, fontSize: 12.5, lineHeight: 19, color: COLORS.onDarkSoft, marginTop: 8, textAlign: "center" },
   btnCoral: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 20, marginTop: 14, alignSelf: "stretch", alignItems: "center" },
-  btnCoralText: { fontSize: 14, fontWeight: "500", color: COLORS.onDark },
-  footCredit: { fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 14 },
-  footCreditName: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: COLORS.primary },
+  btnCoralText: { fontFamily: FONT_MEDIUM, fontSize: 14, color: COLORS.onDark },
+  footCredit: { fontFamily: FONT_REGULAR, fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 14 },
+  footCreditName: { fontFamily: FONT_SEMIBOLD, fontStyle: "italic", fontSize: 13, color: COLORS.primary },
 
   /* Modal */
   modalBackdrop: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: COLORS.canvas, borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    backgroundColor: "#0F172A", borderTopLeftRadius: 16, borderTopRightRadius: 16,
     paddingHorizontal: 20, paddingTop: 10, paddingBottom: 26, maxHeight: "78%",
   },
   modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.creamStrong, alignSelf: "center", marginBottom: 14 },
   modalHeader: { flexDirection: "row", alignItems: "flex-start", paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.hairlineSoft, marginBottom: 4 },
-  modalTitle: { fontFamily: SERIF, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, lineHeight: 24 },
-  modalSub: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
+  modalTitle: { fontFamily: FONT_SEMIBOLD, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, lineHeight: 24 },
+  modalSub: { fontFamily: FONT_REGULAR, fontSize: 12, color: COLORS.muted, marginTop: 4 },
   logRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.hairlineSoft },
-  logDate: { fontSize: 13, fontWeight: "500", color: COLORS.ink },
-  logTime: { fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 2 },
+  logDate: { fontFamily: FONT_MEDIUM, fontSize: 13, color: COLORS.ink },
+  logTime: { fontFamily: FONT_REGULAR, fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 2 },
   logBadge: { backgroundColor: COLORS.surfaceCard, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 4 },
-  logBadgeText: { fontSize: 11, fontWeight: "500" },
+  logBadgeText: { fontFamily: FONT_MEDIUM, fontSize: 11 },
 });

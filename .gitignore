@@ -43,3 +43,7 @@ app-example
 /android
 
 .kilo/
+.idea/
+*.log
+log*.txt
+eas-log*.json

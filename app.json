@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Attendance App",
+    "name": "JNTUA Attendance",
     "slug": "JNTUA-Attendance",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -43,11 +43,17 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
+      ],
+      "expo-font",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-5291524891342004~2212450506",
+          "iosAppId": "ca-app-pub-5291524891342004~2212450506"
+        }
       ]
     ],
     "updates": {
-      "url": "https://u.expo.dev/214d3218-11c5-4156-8a95-12843b24cd74",
-      "fallbackToCacheTimeout": 0,
       "checkAutomatically": "NEVER"
     },
     "runtimeVersion": {
@@ -56,10 +62,14 @@
     "experiments": {
       "reactCompiler": true
     },
+    "ios": {
+      "bundleIdentifier": "com.chanikya501.JNTUAAttendance"
+    },
     "extra": {
       "eas": {
-        "projectId": "554d405b-1ed9-4bb5-bd9f-f8af967a3634"
+        "projectId": "995b4509-884e-4349-98a7-f6fdfc0fa8ab"
       }
-    }
+    },
+    "owner": "theadarsh15s-team"
   }
 }
