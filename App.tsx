@@ -9,11 +9,11 @@ import {
   Outfit_700Bold
 } from "@expo-google-fonts/outfit";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
   FlatList,
-  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -410,6 +410,8 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const [showAddPdfModal, setShowAddPdfModal] = useState(false);
+  const [viewingPdf, setViewingPdf] = useState<ImportantPdfItem | null>(null);
+  const pdfWebViewRef = useRef<WebViewType | null>(null);
 
   // New PDF Form fields
   const [newPdfYear, setNewPdfYear] = useState<1 | 2 | 3 | 4>(1);
@@ -451,8 +453,8 @@ export default function App() {
 
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
-  const navModalRef = useRef({ showAddPdfModal, showPinModal, activeTab });
-  useEffect(() => { navModalRef.current = { showAddPdfModal, showPinModal, activeTab }; });
+  const navModalRef = useRef({ showAddPdfModal, showPinModal, activeTab, viewingPdf });
+  useEffect(() => { navModalRef.current = { showAddPdfModal, showPinModal, activeTab, viewingPdf }; });
 
   const lastActivityRef = useRef<number>(Date.now());
   const persistedSigRef = useRef<string | null>(null);
@@ -503,6 +505,10 @@ export default function App() {
 
     const handleBackConsumed = (): boolean => {
       const nav = navModalRef.current;
+      if (nav.viewingPdf) {
+        setViewingPdf(null);
+        return true;
+      }
       if (nav.showAddPdfModal) {
         setShowAddPdfModal(false);
         return true;
@@ -625,10 +631,8 @@ export default function App() {
   /* ------------------------------------------------------------------ */
   /*  PDF Actions                                                       */
   /* ------------------------------------------------------------------ */
-  const handleOpenPdf = useCallback((url: string) => {
-    void Linking.openURL(url).catch(() => {
-      Alert.alert("Unable to Open Document", "Please check your network connection or the document link.");
-    });
+  const handleOpenPdf = useCallback((item: ImportantPdfItem) => {
+    setViewingPdf(item);
   }, []);
 
   const handleVerifyPin = useCallback(() => {
@@ -1092,10 +1096,10 @@ export default function App() {
                   <View style={styles.pdfCardActions}>
                     <BouncyButton
                       style={styles.openPdfBtn}
-                      onPress={() => handleOpenPdf(item.fileUrl)}
+                      onPress={() => handleOpenPdf(item)}
                     >
-                      <Ionicons name="open-outline" size={13} color={COLORS.onDark} style={{ marginRight: 5 }} />
-                      <Text style={styles.openPdfBtnText}>Open</Text>
+                      <Ionicons name="eye-outline" size={13} color={COLORS.onDark} style={{ marginRight: 5 }} />
+                      <Text style={styles.openPdfBtnText}>View</Text>
                     </BouncyButton>
 
                     {isAdminMode && (
@@ -1405,6 +1409,97 @@ export default function App() {
               </TouchableOpacity>
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================== */}
+      {/* MODAL: IN-APP PDF VIEWER (VIEW ON APK - NO EXTERNAL DOWNLOAD)  */}
+      {/* ============================================================== */}
+      <Modal
+        visible={!!viewingPdf}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setViewingPdf(null)}
+      >
+        <View style={styles.pdfViewerContainer}>
+          <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceCard} />
+
+          {/* Viewer Top Bar */}
+          <View style={styles.pdfViewerHeader}>
+            <TouchableOpacity
+              style={styles.pdfViewerBackBtn}
+              onPress={() => setViewingPdf(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={20} color={COLORS.ink} />
+            </TouchableOpacity>
+
+            <View style={styles.pdfViewerTitleWrap}>
+              <Text style={styles.pdfViewerTitle} numberOfLines={1}>
+                {viewingPdf?.title ?? "Document Viewer"}
+              </Text>
+              <Text style={styles.pdfViewerSubtitle} numberOfLines={1}>
+                {viewingPdf?.subject} {viewingPdf?.regulation ? `• ${viewingPdf.regulation}` : ""}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.pdfViewerReloadBtn}
+              onPress={() => pdfWebViewRef.current?.reload()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="reload-outline" size={18} color={COLORS.ink} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Embedded Document View */}
+          {viewingPdf && (
+            <View style={styles.pdfViewerBody}>
+              <WebView
+                ref={pdfWebViewRef}
+                style={styles.pdfViewerWebview}
+                source={{
+                  uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewingPdf.fileUrl)}`,
+                }}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                startInLoadingState={true}
+                scalesPageToFit={true}
+                setSupportMultipleWindows={false}
+                onShouldStartLoadWithRequest={(request) => {
+                  if (
+                    request.url.includes("docs.google.com") ||
+                    request.url.includes("google.com/gview") ||
+                    request.url === viewingPdf.fileUrl
+                  ) {
+                    return true;
+                  }
+                  return false;
+                }}
+                renderLoading={() => (
+                  <View style={styles.pdfViewerLoading}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.pdfViewerLoadingText}>Loading document in-app…</Text>
+                  </View>
+                )}
+                renderError={() => (
+                  <View style={styles.pdfViewerErrorWrap}>
+                    <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
+                    <Text style={styles.pdfViewerErrorTitle}>Unable to Display Document</Text>
+                    <Text style={styles.pdfViewerErrorSub}>
+                      Please ensure you have an active internet connection.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.pdfViewerRetryBtn}
+                      onPress={() => pdfWebViewRef.current?.reload()}
+                    >
+                      <Text style={styles.pdfViewerRetryBtnText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            </View>
+          )}
         </View>
       </Modal>
     </LinearGradient>
@@ -2486,5 +2581,117 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     textDecorationLine: "underline",
+  },
+
+  /* In-App PDF Viewer */
+  pdfViewerContainer: {
+    flex: 1,
+    backgroundColor: COLORS.canvas,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 44,
+  },
+  pdfViewerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.surfaceCard,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairline,
+    elevation: 3,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  pdfViewerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfViewerTitleWrap: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  pdfViewerTitle: {
+    fontFamily: FONT_BOLD,
+    fontSize: 14,
+    color: COLORS.ink,
+  },
+  pdfViewerSubtitle: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  pdfViewerReloadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfViewerBody: {
+    flex: 1,
+    backgroundColor: "#525659",
+  },
+  pdfViewerWebview: {
+    flex: 1,
+    backgroundColor: "#525659",
+  },
+  pdfViewerLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.canvas,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  pdfViewerLoadingText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 13,
+    color: COLORS.body,
+    marginTop: 12,
+  },
+  pdfViewerErrorWrap: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.canvas,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    zIndex: 10,
+  },
+  pdfViewerErrorTitle: {
+    fontFamily: FONT_BOLD,
+    fontSize: 15,
+    color: COLORS.ink,
+    marginTop: 10,
+    textAlign: "center",
+  },
+  pdfViewerErrorSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 6,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  pdfViewerRetryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  pdfViewerRetryBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 12.5,
+    color: COLORS.onDark,
   },
 });
