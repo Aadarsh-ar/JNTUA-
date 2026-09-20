@@ -632,7 +632,7 @@ export default function App() {
   }, []);
 
   const handleVerifyPin = useCallback(() => {
-    if (pinInput.trim() === "1234") {
+    if (pinInput.trim() === "630536") {
       setIsAdminMode(true);
       setShowPinModal(false);
       setPinInput("");
@@ -1253,7 +1253,7 @@ export default function App() {
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Admin Access</Text>
-                <Text style={styles.modalSub}>Enter the 4-digit passkey to curate university materials.</Text>
+                <Text style={styles.modalSub}>Enter the 6-digit passkey to curate university materials.</Text>
               </View>
               <TouchableOpacity style={styles.closeIcon} onPress={() => setShowPinModal(false)}>
                 <Ionicons name="close" size={18} color={COLORS.body} />
@@ -1263,11 +1263,11 @@ export default function App() {
             <View style={{ marginVertical: 20 }}>
               <TextInput
                 style={[styles.pinInput, pinError && styles.pinInputError]}
-                placeholder="••••"
+                placeholder="••••••"
                 placeholderTextColor={COLORS.mutedSoft}
                 keyboardType="numeric"
                 secureTextEntry
-                maxLength={8}
+                maxLength={6}
                 value={pinInput}
                 onChangeText={(t) => {
                   setPinInput(t);
@@ -1277,7 +1277,6 @@ export default function App() {
               {pinError && (
                 <Text style={styles.pinErrorText}>Invalid passcode. Please retry.</Text>
               )}
-              <Text style={styles.pinHintText}>Default passcode: 1234</Text>
             </View>
 
             <BouncyButton style={styles.adminSubmitBtn} onPress={handleVerifyPin}>
@@ -2417,13 +2416,6 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     textAlign: "center",
     marginTop: 6,
-  },
-  pinHintText: {
-    fontFamily: FONT_REGULAR,
-    fontSize: 11.5,
-    color: COLORS.muted,
-    textAlign: "center",
-    marginTop: 8,
   },
   adminSubmitBtn: {
     backgroundColor: COLORS.primary,
