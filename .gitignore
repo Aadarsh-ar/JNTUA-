@@ -47,3 +47,4 @@ app-example
 *.log
 log*.txt
 eas-log*.json
+*.apk

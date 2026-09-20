@@ -2,106 +2,855 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Privacy Policy - JNTUA Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JNTUA Attendance · Official App & Privacy Portal</title>
+  <meta name="description" content="Official dashboard, developer documentation, app-ads.txt verification, and privacy policy for JNTUA Attendance application." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #0b132b;
-      --card-bg: #1c2541;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-      --border: rgba(255, 255, 255, 0.08);
+      --bg-canvas: #07080B;
+      --bg-card: rgba(255, 255, 255, 0.035);
+      --bg-card-hover: rgba(255, 255, 255, 0.06);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(56, 189, 248, 0.3);
+      --primary: #38BDF8;
+      --primary-glow: rgba(56, 189, 248, 0.15);
+      --mint: #10B981;
+      --mint-soft: rgba(16, 185, 129, 0.12);
+      --rose: #F43F5E;
+      --rose-soft: rgba(244, 63, 94, 0.12);
+      --amber: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    body {
-      font-family: 'Outfit', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
+
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      display: flex;
-      justify-content: center;
-      min-height: 100vh;
     }
-    .container {
-      max-width: 760px;
-      width: 90%;
-      margin: 40px 0;
-      background: var(--card-bg);
-      padding: 40px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    }
-    h1 {
-      font-size: 2rem;
-      color: var(--accent);
-      margin-bottom: 8px;
-    }
-    .date {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 24px;
-    }
-    h3 {
-      font-size: 1.25rem;
-      margin-top: 24px;
-      margin-bottom: 12px;
+
+    body {
+      background-color: var(--bg-canvas);
       color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.12), transparent),
+        radial-gradient(circle 600px at 90% 40%, rgba(16, 185, 129, 0.05), transparent);
+      background-attachment: fixed;
     }
-    p, li {
-      color: var(--text-muted);
-      line-height: 1.7;
-      font-size: 1rem;
-    }
-    ul {
-      padding-left: 20px;
-    }
+
     a {
-      color: var(--accent);
+      color: inherit;
       text-decoration: none;
     }
-    a:hover {
-      text-decoration: underline;
+
+    /* Container */
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
     }
-    hr {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 24px 0;
+
+    /* Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(7, 8, 11, 0.75);
+    }
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 72px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.5px;
+    }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--primary-glow);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+    .logo-tag {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .nav-link {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    .nav-link:hover {
+      color: var(--text-main);
+    }
+    .btn-pill {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-pill:hover {
+      background: var(--text-main);
+      color: var(--bg-canvas);
+      border-color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 72px 0 40px;
+      text-align: center;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: var(--mint);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      margin-bottom: 24px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 10px var(--mint);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    h1.hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      max-width: 840px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #FFFFFF 30%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.hero-desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #07080B;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
+    }
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Interactive Showcase Mockup */
+    .showcase-wrap {
+      margin: 48px auto;
+      max-width: 440px;
+    }
+    .phone-frame {
+      background: #0D1017;
+      border: 1px solid var(--border-subtle);
+      border-radius: 36px;
+      padding: 24px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(56, 189, 248, 0.08);
+      position: relative;
+    }
+    .mock-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .mock-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary-glow);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .mock-user-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .mock-user-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .mock-badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: var(--mint);
+      background: var(--mint-soft);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    /* Overall Card Mock */
+    .mock-overall {
+      background: #11151F;
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .mock-overall-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .mock-overall-pct {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--mint);
+      line-height: 1;
+      letter-spacing: -1.5px;
+      margin-bottom: 14px;
+    }
+    .mock-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .mock-fill {
+      height: 100%;
+      width: 82.4%;
+      background: var(--mint);
+      border-radius: 3px;
+    }
+    .mock-target-line {
+      position: absolute;
+      left: 75%;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      background: #FFFFFF;
+      border-radius: 1px;
+    }
+    .mock-stats-row {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 12px;
+      text-align: center;
+    }
+    .mock-stat-item {
+      flex: 1;
+    }
+    .mock-stat-num {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .mock-stat-label {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.8px;
+    }
+    .mock-buffer-card {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mock-buffer-text {
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+    .mock-buffer-chip {
+      background: var(--mint);
+      color: #07080B;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+    }
+
+    /* Interactive Subject Card in Mockup */
+    .mock-subject-card {
+      background: #11151E;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .mock-subject-card:hover {
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: scale(1.01);
+    }
+    .mock-sub-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .mock-sub-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .mock-sub-pct {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    /* Section Cards Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 40px 0;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 28px;
+      transition: all 0.25s ease;
+    }
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.16);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--primary-glow);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 16px;
+    }
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .feature-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* App-Ads.txt Card */
+    .ads-banner {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(16, 185, 129, 0.04));
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 20px;
+      padding: 32px;
+      margin: 48px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .ads-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--primary);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .ads-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .ads-snippet-box {
+      background: #06080C;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88rem;
+      color: #38BDF8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0;
+      word-break: break-all;
+    }
+    .btn-copy {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      margin-left: 12px;
+    }
+    .btn-copy:hover {
+      background: var(--text-main);
+      color: #07080B;
+    }
+
+    /* Privacy Policy Section */
+    .policy-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 40px;
+      margin: 48px 0;
+    }
+    .policy-head {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .policy-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .policy-meta {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .policy-item {
+      margin-bottom: 24px;
+    }
+    .policy-item h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+    .policy-item p, .policy-item li {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .policy-item ul {
+      padding-left: 20px;
+      margin-top: 6px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 40px 0;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+    .footer-link {
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+    }
+    .footer-link:hover {
+      color: var(--primary);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--mint);
+      color: #07080B;
+      padding: 10px 20px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Privacy Policy for JNTUA Attendance</h1>
-    <div class="date">Effective Date: August 16, 2026</div>
-    <hr />
-    <p><strong>JNTUA Attendance</strong> ("we", "our", or "us") provides a mobile application designed to help students check their attendance from the JNTUA student portal.</p>
-    
-    <h3>1. Information Collection and Use</h3>
-    <ul>
-      <li><strong>Student Credentials & Data:</strong> The app does <strong>NOT</strong> store, transmit, or share your portal passwords or personal login credentials on any external server. Attendance data and portal sessions are processed locally on your device via secure webview.</li>
-      <li><strong>Local Storage:</strong> Attendance summary and app state are saved locally on your device using Expo FileSystem and AsyncStorage.</li>
-    </ul>
 
-    <h3>2. Third-Party Services & Ads</h3>
-    <p>The app uses third-party services that may collect information used to identify you:</p>
-    <ul>
-      <li><strong>Google Mobile Ads (AdMob):</strong> Used to display banner, interstitial, and open-app ads. AdMob may collect device identifiers and usage data to serve non-personalized/personalized ads according to Google's privacy policy.</li>
-    </ul>
+  <!-- Navigation -->
+  <header>
+    <div class="container nav-inner">
+      <div class="logo">
+        <div class="logo-icon">★</div>
+        <div>JNTUA Attendance</div>
+        <div class="logo-tag">PRO</div>
+      </div>
+      <nav class="nav-links">
+        <a href="#showcase" class="nav-link">Features</a>
+        <a href="admin/index.html" class="nav-link" style="color:var(--primary); font-weight:600;">Admin Panel</a>
+        <a href="#app-ads" class="nav-link">app-ads.txt</a>
+        <a href="#privacy" class="nav-link">Privacy</a>
+        <a href="https://github.com/Aadarsh-ar/JNTUA-" target="_blank" class="btn-pill">
+          <span>GitHub</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+        </a>
+      </nav>
+    </div>
+  </header>
 
-    <h3>3. Data Security</h3>
-    <p>We value your trust in providing your information, and we strive to use commercially acceptable means of protecting it. Since no server database is maintained by us, your attendance data remains private on your own device.</p>
+  <main class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="badge-status">
+        <div class="status-dot"></div>
+        <span>Live on Google Play · Expo SDK 54 · Native ARM64</span>
+      </div>
+      <h1 class="hero-title">
+        The Intelligent Attendance Companion for <span>JNTUA-CEA</span>
+      </h1>
+      <p class="hero-desc">
+        Instant semester scraping, precision 75% threshold recovery calculations, and offline history — completely private without storing your portal credentials.
+      </p>
+      <div class="hero-actions">
+        <a href="#app-ads" class="btn-primary">
+          <span>Verify app-ads.txt</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+        <a href="https://github.com/Aadarsh-ar/JNTUA-" target="_blank" class="btn-secondary">
+          <span>Explore Source Code</span>
+        </a>
+      </div>
+    </section>
 
-    <h3>4. Updates to This Privacy Policy</h3>
-    <p>We may update our Privacy Policy from time to time. Thus, you are advised to review this page periodically for any changes.</p>
+    <!-- Interactive App UI Showcase -->
+    <section id="showcase" class="showcase-wrap">
+      <div class="phone-frame">
+        <div class="mock-profile">
+          <div class="mock-avatar">S</div>
+          <div>
+            <div class="mock-user-name">Student Account</div>
+            <div class="mock-user-meta">22001A0501 • B.Tech CSE</div>
+          </div>
+          <div class="mock-badge">Active</div>
+        </div>
 
-    <h3>5. Contact Us</h3>
-    <p>If you have any questions or suggestions about our Privacy Policy, feel free to contact us via GitHub:</p>
-    <p><a href="https://github.com/Aadarsh-ar/JNTUA-" target="_blank">https://github.com/Aadarsh-ar/JNTUA-</a></p>
-  </div>
+        <div class="mock-overall">
+          <div class="mock-overall-head">
+            <span>OVERALL ATTENDANCE</span>
+            <span style="color: var(--mint);">SAFE BUFFER</span>
+          </div>
+          <div class="mock-overall-pct">82.4%</div>
+          
+          <div class="mock-track">
+            <div class="mock-fill"></div>
+            <div class="mock-target-line" title="75% Mandatory Target"></div>
+          </div>
+
+          <div class="mock-stats-row">
+            <div class="mock-stat-item">
+              <div class="mock-stat-num">176</div>
+              <div class="mock-stat-label">HELD</div>
+            </div>
+            <div class="mock-stat-item">
+              <div class="mock-stat-num" style="color: var(--mint);">145</div>
+              <div class="mock-stat-label">ATTENDED</div>
+            </div>
+            <div class="mock-stat-item">
+              <div class="mock-stat-num" style="color: var(--text-muted);">31</div>
+              <div class="mock-stat-label">MISSED</div>
+            </div>
+          </div>
+
+          <div class="mock-buffer-card">
+            <div class="mock-buffer-text">Safe to skip while &gt; 75%:</div>
+            <div class="mock-buffer-chip">4 classes</div>
+          </div>
+        </div>
+
+        <div class="mock-subject-card" onclick="toggleSubjectDemo(this)">
+          <div class="mock-sub-row">
+            <div class="mock-sub-title">Distributed Systems</div>
+            <div class="mock-sub-pct" style="color: var(--mint);">88.2%</div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>30 / 34 attended</span>
+            <span style="color: var(--mint);">Can skip 5 classes</span>
+          </div>
+        </div>
+
+        <div class="mock-subject-card" onclick="toggleSubjectDemo(this)">
+          <div class="mock-sub-row">
+            <div class="mock-sub-title">Compiler Design</div>
+            <div class="mock-sub-pct" style="color: var(--rose);">71.4%</div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>25 / 35 attended</span>
+            <span style="color: var(--rose);">Need +5 classes</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Features Grid -->
+    <section class="grid-2">
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-title">100% Private & Device-Only</div>
+        <div class="feature-desc">
+          Your portal password and attendance logs never leave your physical smartphone. No intermediary servers, no external databases.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">75% Recovery Mathematical Engine</div>
+        <div class="feature-desc">
+          Calculates the exact number of classes you can afford to skip or must attend to clear the university 75% minimum threshold.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <div class="feature-title">Instant Offline Hydration</div>
+        <div class="feature-desc">
+          Caches your latest session with Expo FileSystem so you can check your logs instantly on the go without waiting for portal captcha.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💎</div>
+        <div class="feature-title">Minimalist Titanium Design</div>
+        <div class="feature-desc">
+          Built with precision Outfit geometric typography, responsive feedback springs, and an eye-friendly obsidian dark mode.
+        </div>
+      </div>
+    </section>
+
+    <!-- App-Ads.txt Verification Card -->
+    <section id="app-ads" class="ads-banner">
+      <div class="ads-tag">Authorized Digital Sellers (IAB Tech Lab Spec)</div>
+      <h2 class="ads-title">Google AdMob app-ads.txt Verification</h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 680px;">
+        This domain serves the authorized digital sellers file for the Android application <code>com.theadarsh15.JNTUAAttendance</code>.
+      </p>
+
+      <div class="ads-snippet-box">
+        <span id="ads-content">google.com, pub-5291524891342004, DIRECT, f08c47fec0942fa0</span>
+        <button class="btn-copy" onclick="copyAdsSnippet()">Copy Snippet</button>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px;">
+        <a href="./app-ads.txt" target="_blank" class="btn-pill">
+          <span>Open raw /app-ads.txt</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+        </a>
+        <span style="font-size: 0.8rem; color: var(--text-dim);">Crawled automatically by Google AdMob</span>
+      </div>
+    </section>
+
+    <!-- Privacy Policy Card -->
+    <section id="privacy" class="policy-section">
+      <div class="policy-head">
+        <h2 class="policy-title">Privacy Policy</h2>
+        <div class="policy-meta">Effective Date: August 16, 2026 · Latest Version</div>
+      </div>
+
+      <div class="policy-item">
+        <p><strong>JNTUA Attendance</strong> ("we", "our", or "us") provides a mobile utility application designed to help university students view and monitor their attendance from the JNTUA student portal.</p>
+      </div>
+
+      <div class="policy-item">
+        <h3>1. Information Collection & Zero-Server Policy</h3>
+        <ul>
+          <li><strong>Student Credentials & Attendance Data:</strong> The application does <strong>NOT</strong> store, transmit, or share your portal passwords or personal login credentials on any external server. All attendance data and portal sessions are processed locally on your device via secure sandbox WebView.</li>
+          <li><strong>Local Persistence:</strong> Attendance aggregates and historical logs are saved exclusively in your phone's sandbox storage via Expo FileSystem and AsyncStorage for offline viewing.</li>
+        </ul>
+      </div>
+
+      <div class="policy-item">
+        <h3>2. Third-Party Advertising Services</h3>
+        <p>The application integrates Google Mobile Ads (AdMob) to sustain maintenance costs. AdMob may process non-sensitive device identifiers and request metrics to serve advertisements in compliance with Google's privacy policies.</p>
+      </div>
+
+      <div class="policy-item">
+        <h3>3. Data Security</h3>
+        <p>Because no central server or database is maintained by us, your educational data is mathematically impossible for us to leak or access. It remains under your complete control on your personal mobile device.</p>
+      </div>
+
+      <div class="policy-item">
+        <h3>4. Open Source Transparency & Inquiries</h3>
+        <p>Have questions, audit requests, or suggestions? Check our source code or contact us via our official repository:</p>
+        <p style="margin-top: 8px;">
+          <a href="https://github.com/Aadarsh-ar/JNTUA-" target="_blank" style="color: var(--primary); font-weight: 600;">
+            https://github.com/Aadarsh-ar/JNTUA-
+          </a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="#showcase" class="footer-link">Features</a>
+        <a href="./app-ads.txt" class="footer-link">app-ads.txt</a>
+        <a href="#privacy" class="footer-link">Privacy Policy</a>
+        <a href="https://github.com/Aadarsh-ar/JNTUA-" target="_blank" class="footer-link">GitHub</a>
+      </div>
+      <div>&copy; 2026 JNTUA Attendance · Crafted with minimalist obsidian aesthetics & precision engineering.</div>
+    </div>
+  </footer>
+
+  <!-- Toast Element -->
+  <div id="toast" class="toast">Copied to clipboard!</div>
+
+  <script>
+    function copyAdsSnippet() {
+      const text = document.getElementById('ads-content').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!');
+      }).catch(() => {
+        showToast('Selection copied');
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function toggleSubjectDemo(el) {
+      el.style.transform = 'scale(0.97)';
+      setTimeout(() => {
+        el.style.transform = '';
+      }, 150);
+    }
+  </script>
 </body>
 </html>

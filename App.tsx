@@ -9,18 +9,23 @@ import {
   Outfit_700Bold
 } from "@expo-google-fonts/outfit";
 import {
+  Alert,
   Animated,
   BackHandler,
   FlatList,
+  Linking,
   Modal,
   Platform,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
-import type { TouchableOpacityProps } from "react-native";
+import type { GestureResponderEvent, StyleProp, TextStyle, TouchableOpacityProps, ViewStyle } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import * as SplashScreen from "expo-splash-screen";
@@ -41,32 +46,46 @@ import {
 import { shouldCheckOnMount, useUpdateManager } from "./utils/updateManager";
 import { useAppOpenAd } from "./utils/appOpenAd";
 import { useInterstitialAd } from "./utils/interstitialAd";
+import { useMobileAdsInit } from "./utils/adInit";
+import {
+  ImportantPdfItem,
+  loadImportantPdfs,
+  addImportantPdf,
+  deleteImportantPdf,
+  resetToDefaultPdfs,
+} from "./utils/pdfService";
 
 /* ------------------------------------------------------------------ */
-/*  Glassmorphism over Deep Ocean Gradient Palette                     */
+/*  Minimal Luxury Light Gray ("Vogue" Editorial) Design System        */
 /* ------------------------------------------------------------------ */
 const COLORS = {
-  canvas: "transparent",
-  surfaceCard: "rgba(255, 255, 255, 0.12)",
-  creamStrong: "rgba(255, 255, 255, 0.2)",
-  surfaceDark: "rgba(0, 0, 0, 0.2)",
-  primary: "#22D3EE", // Cyan
-  primaryActive: "#06B6D4",
-  ink: "#FFFFFF",
-  body: "#F8FAFC",
-  muted: "#CBD5E1",
+  canvas: "#F8F9FA",
+  canvasEnd: "#EDEFF2",
+  surfaceCard: "#FFFFFF",
+  surfaceCardHover: "#F1F3F6",
+  surfaceDark: "#0F172A",
+  surfacePill: "rgba(15, 23, 42, 0.05)",
+  primary: "#0F172A", // Vogue high-fashion charcoal ink
+  primaryGlow: "rgba(15, 23, 42, 0.08)",
+  ink: "#0F172A",
+  body: "#334155",
+  muted: "#64748B",
   mutedSoft: "#94A3B8",
-  hairline: "rgba(255, 255, 255, 0.15)",
-  hairlineSoft: "rgba(255, 255, 255, 0.05)",
+  hairline: "rgba(15, 23, 42, 0.08)",
+  hairlineSoft: "rgba(15, 23, 42, 0.04)",
   onDark: "#FFFFFF",
-  onDarkSoft: "#E2E8F0",
-  success: "#4ADE80",
-  live: "#22D3EE",
-  error: "#F87171",
-  amber: "#FBBF24",
-  overlay: "rgba(15, 23, 42, 0.6)",
+  onDarkSoft: "#F1F5F9",
+  success: "#059669",
+  successSoft: "rgba(5, 150, 105, 0.10)",
+  live: "#059669",
+  error: "#E11D48",
+  errorSoft: "rgba(225, 29, 72, 0.10)",
+  amber: "#D97706",
+  amberSoft: "rgba(217, 119, 6, 0.10)",
+  overlay: "rgba(15, 23, 42, 0.45)",
 };
 
+const FONT_VOGUE = Platform.select({ ios: "Didot", android: "serif", default: "serif" });
 const FONT_REGULAR = "Outfit_400Regular";
 const FONT_MEDIUM = "Outfit_500Medium";
 const FONT_SEMIBOLD = "Outfit_600SemiBold";
@@ -84,13 +103,13 @@ const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
 /* ------------------------------------------------------------------ */
 const AnimatedPressable = Animated.createAnimatedComponent(TouchableOpacity);
 
-function BouncyButton({ onPress, style, children, activeOpacity = 0.9, ...props }: TouchableOpacityProps & { children: React.ReactNode }) {
+function BouncyButton({ onPress, style, children, activeOpacity = 0.88, ...props }: TouchableOpacityProps & { children: React.ReactNode }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const onPressIn = (e: any) => {
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+  const onPressIn = (e: GestureResponderEvent) => {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
     if (props.onPressIn) props.onPressIn(e);
   };
-  const onPressOut = (e: any) => {
+  const onPressOut = (e: GestureResponderEvent) => {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
     if (props.onPressOut) props.onPressOut(e);
   };
@@ -109,7 +128,7 @@ function BouncyButton({ onPress, style, children, activeOpacity = 0.9, ...props 
   );
 }
 
-function PulsingText({ style, children }: { style?: any; children: React.ReactNode }) {
+function PulsingText({ style, children }: { style?: StyleProp<TextStyle>; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     Animated.loop(
@@ -122,21 +141,20 @@ function PulsingText({ style, children }: { style?: any; children: React.ReactNo
   return <Animated.Text style={[style, { opacity }]}>{children}</Animated.Text>;
 }
 
-function FadeInView({ style, children }: { style?: any; children: React.ReactNode }) {
+function FadeInView({ style, children }: { style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(15)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 400, useNativeDriver: true })
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 300, useNativeDriver: true })
     ]).start();
   }, [opacity, translateY]);
   return <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>{children}</Animated.View>;
 }
 
-
-
-/*  State — unchanged workflow                                         */
+/* ------------------------------------------------------------------ */
+/*  State & Reducer                                                   */
 /* ------------------------------------------------------------------ */
 interface AppState {
   webViewKey: number;
@@ -268,53 +286,88 @@ interface AnimatedSubjectCardProps {
 }
 
 function AnimatedSubjectCard({ item, index, dispatch, getAttendanceColor, calculateCanSkip, calculateClassesToReach75 }: AnimatedSubjectCardProps) {
-  const translateY = useRef(new Animated.Value(50)).current;
+  const translateY = useRef(new Animated.Value(18)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 400,
-      delay: index * 100,
-      useNativeDriver: true,
-    }).start();
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 400,
-      delay: index * 100,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 320,
+        delay: Math.min(index * 40, 300),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 320,
+        delay: Math.min(index * 40, 300),
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [index, opacity, translateY]);
 
   const pVal = parseFloat(item.percentage);
   const isLow = pVal < 75;
   const canSkip = calculateCanSkip(item.present, item.total);
   const classesToReach75 = calculateClassesToReach75(item.present, item.total);
+  const color = getAttendanceColor(pVal);
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
       <BouncyButton
         style={styles.subjectCard}
-        activeOpacity={0.75}
+        activeOpacity={0.85}
         onPress={() => dispatch({ type: "SET_SELECTED_SUBJECT", data: item })}
       >
         <View style={styles.subjectRow1}>
           <Text style={styles.subjectName} numberOfLines={2}>{item.subjectName}</Text>
-          <Text style={[styles.subjectPct, { color: getAttendanceColor(pVal) }]}>{item.percentage}%</Text>
+          <View style={styles.subjectPctWrap}>
+            <Text style={[styles.subjectPct, { color }]}>{item.percentage}%</Text>
+          </View>
         </View>
+
+        {/* Dynamic Progress Track with 75% Target Marker */}
+        <View style={styles.cardTrackWrap}>
+          <View style={styles.cardTrackBg}>
+            <View
+              style={[
+                styles.cardTrackFill,
+                { width: `${Math.min(100, Math.max(0, pVal))}%`, backgroundColor: color },
+              ]}
+            />
+            <View style={styles.cardTargetNotch} />
+          </View>
+        </View>
+
         <View style={styles.subjectRow2}>
           <Text style={styles.shortStats}>
-            Tot <Text style={styles.shortStatsBold}>{item.total}</Text>
-            {" · "}Att <Text style={styles.shortStatsBold}>{item.present}</Text>
-            {" · "}Abs <Text style={styles.shortStatsBold}>{item.absent}</Text>
+            Attended <Text style={styles.shortStatsBold}>{item.present}</Text>/{item.total}
+            {" · "}Missed <Text style={styles.shortStatsBold}>{item.absent}</Text>
           </Text>
-          <View style={[styles.badgeCoral, canSkip <= 0 && styles.badgeMute]}>
-            <Text style={[styles.badgeCoralText, canSkip <= 0 && styles.badgeMuteText]}>
+
+          <View
+            style={[
+              styles.statusChip,
+              isLow ? styles.statusChipDanger : canSkip > 0 ? styles.statusChipSuccess : styles.statusChipNeutral,
+            ]}
+          >
+            <Ionicons
+              name={isLow ? "arrow-up-circle-outline" : canSkip > 0 ? "checkmark-circle-outline" : "remove-circle-outline"}
+              size={13}
+              color={isLow ? COLORS.error : canSkip > 0 ? COLORS.success : COLORS.muted}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.statusChipText,
+                isLow ? styles.statusChipDangerText : canSkip > 0 ? styles.statusChipSuccessText : styles.statusChipNeutralText,
+              ]}
+            >
               {isLow
-                ? `Attend ${classesToReach75} more`
+                ? `Need +${classesToReach75}`
                 : canSkip > 0
                   ? `Skip ${canSkip} ${canSkip === 1 ? "class" : "classes"}`
-                  : "Keep attending"}
+                  : "On margin (75%)"}
             </Text>
           </View>
         </View>
@@ -338,11 +391,44 @@ export default function App() {
   }
   const webViewRef = useRef<WebViewType>(null);
   const [state, dispatch] = useReducer(appReducer, initialState);
+  useMobileAdsInit();
   const [adFailed, setAdFailed] = useState(false);
   const update = useUpdateManager();
   const { checkForUpdate } = update;
   useAppOpenAd(state.isSplashDismissed);
   const { tryShowInterstitial } = useInterstitialAd();
+
+  /* ------------------------------------------------------------------ */
+  /*  Navigation & Important PDFs State                                 */
+  /* ------------------------------------------------------------------ */
+  const [activeTab, setActiveTab] = useState<"attendance" | "pdfs">("attendance");
+  const [pdfList, setPdfList] = useState<ImportantPdfItem[]>([]);
+  const [selectedYear, setSelectedYear] = useState<0 | 1 | 2 | 3 | 4>(0);
+  const [pdfSearch, setPdfSearch] = useState("");
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
+  const [showAddPdfModal, setShowAddPdfModal] = useState(false);
+
+  // New PDF Form fields
+  const [newPdfYear, setNewPdfYear] = useState<1 | 2 | 3 | 4>(1);
+  const [newPdfSem, setNewPdfSem] = useState("1-1");
+  const [newPdfSubject, setNewPdfSubject] = useState("");
+  const [newPdfTitle, setNewPdfTitle] = useState("");
+  const [newPdfRegulation, setNewPdfRegulation] = useState("R23/R20");
+  const [newPdfUrl, setNewPdfUrl] = useState("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+  const [newPdfSize, setNewPdfSize] = useState("2.4 MB");
+
+  // Load Important PDFs on mount
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const items = await loadImportantPdfs();
+      if (mounted) setPdfList(items);
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     if (shouldCheckOnMount()) void checkForUpdate();
@@ -365,6 +451,9 @@ export default function App() {
 
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
+  const navModalRef = useRef({ showAddPdfModal, showPinModal, activeTab });
+  useEffect(() => { navModalRef.current = { showAddPdfModal, showPinModal, activeTab }; });
+
   const lastActivityRef = useRef<number>(Date.now());
   const persistedSigRef = useRef<string | null>(null);
 
@@ -404,69 +493,80 @@ export default function App() {
     } catch (err) {
       console.warn("WebView Message Error:", err);
     }
-   }, []);
+  }, []);
 
-   useEffect(() => {
-     let lastBackPress = 0;
-     let subscription: { remove: () => void } | null = null;
-     let popstateHandler: (() => void) | null = null;
+  /* Back handler */
+  useEffect(() => {
+    let lastBackPress = 0;
+    let subscription: { remove: () => void } | null = null;
+    let popstateHandler: (() => void) | null = null;
 
-     const handleBackConsumed = (): boolean => {
-       const s = stateRef.current;
+    const handleBackConsumed = (): boolean => {
+      const nav = navModalRef.current;
+      if (nav.showAddPdfModal) {
+        setShowAddPdfModal(false);
+        return true;
+      }
+      if (nav.showPinModal) {
+        setShowPinModal(false);
+        return true;
+      }
+      if (nav.activeTab === "pdfs") {
+        setActiveTab("attendance");
+        return true;
+      }
 
-       if (s.selectedSubject) {
-         dispatch({ type: "SET_SELECTED_SUBJECT", data: null });
-         return true;
-       }
+      const s = stateRef.current;
+      if (s.selectedSubject) {
+        dispatch({ type: "SET_SELECTED_SUBJECT", data: null });
+        return true;
+      }
+      if (s.isScrapingFinished && s.isLoggedIn) {
+        dispatch({ type: "RESET" });
+        return true;
+      }
+      if (s.isSelectionError && s.isLoggedIn && !s.isScrapingFinished) {
+        dispatch({ type: "CLEAR_SELECTION_ERROR" });
+        return true;
+      }
+      return false;
+    };
 
-       if (s.isScrapingFinished && s.isLoggedIn) {
-         dispatch({ type: "RESET" });
-         return true;
-       }
+    if (Platform.OS === "android") {
+      const onBackPress = (): boolean => {
+        if (handleBackConsumed()) return true;
 
-       if (s.isSelectionError && s.isLoggedIn && !s.isScrapingFinished) {
-         dispatch({ type: "CLEAR_SELECTION_ERROR" });
-         return true;
-       }
+        const now = Date.now();
+        if (now - lastBackPress < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPress = now;
+        ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
+        return true;
+      };
 
-       return false;
-     };
+      subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    } else if (Platform.OS === "web") {
+      window.history.replaceState({ nav: "root" }, "", window.location.href);
 
-     if (Platform.OS === "android") {
-       const onBackPress = (): boolean => {
-         if (handleBackConsumed()) return true;
+      popstateHandler = () => {
+        handleBackConsumed();
+        window.history.pushState({ nav: "root" }, "", window.location.href);
+      };
 
-         const now = Date.now();
-         if (now - lastBackPress < 2000) {
-           BackHandler.exitApp();
-           return true;
-         }
-         lastBackPress = now;
-         ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
-         return true;
-       };
+      window.addEventListener("popstate", popstateHandler);
+    }
 
-       subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
-     } else if (Platform.OS === "web") {
-       window.history.replaceState({ nav: "root" }, "", window.location.href);
+    return () => {
+      subscription?.remove();
+      if (popstateHandler) {
+        window.removeEventListener("popstate", popstateHandler);
+      }
+    };
+  }, []);
 
-       popstateHandler = () => {
-         handleBackConsumed();
-         window.history.pushState({ nav: "root" }, "", window.location.href);
-       };
-
-       window.addEventListener("popstate", popstateHandler);
-     }
-
-     return () => {
-       subscription?.remove();
-       if (popstateHandler) {
-         window.removeEventListener("popstate", popstateHandler);
-       }
-     };
-   }, []);
-
-   /* Aggregation math */
+  /* Aggregation math */
   const { overallClasses, overallPresent, overallAbsent } = subjectsData.reduce(
     (acc, x) => ({
       overallClasses: acc.overallClasses + x.total,
@@ -522,10 +622,98 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isLoggedIn, isScrapingFinished]);
 
+  /* ------------------------------------------------------------------ */
+  /*  PDF Actions                                                       */
+  /* ------------------------------------------------------------------ */
+  const handleOpenPdf = useCallback((url: string) => {
+    void Linking.openURL(url).catch(() => {
+      Alert.alert("Unable to Open Document", "Please check your network connection or the document link.");
+    });
+  }, []);
 
+  const handleVerifyPin = useCallback(() => {
+    if (pinInput.trim() === "1234") {
+      setIsAdminMode(true);
+      setShowPinModal(false);
+      setPinInput("");
+      setPinError(false);
+      Alert.alert("Admin Unlocked", "You can now add or remove Important PDFs for all years.");
+    } else {
+      setPinError(true);
+    }
+  }, [pinInput]);
+
+  const handleCreatePdf = useCallback(async () => {
+    if (!newPdfSubject.trim() || !newPdfTitle.trim() || !newPdfUrl.trim()) {
+      Alert.alert("Incomplete Details", "Please provide Subject Name, Document Title, and PDF URL.");
+      return;
+    }
+    const updated = await addImportantPdf({
+      year: newPdfYear,
+      semester: newPdfSem.trim() || "1-1",
+      subject: newPdfSubject.trim(),
+      title: newPdfTitle.trim(),
+      regulation: newPdfRegulation.trim() || undefined,
+      fileUrl: newPdfUrl.trim(),
+      fileSize: newPdfSize.trim() || "2.0 MB",
+    });
+    setPdfList(updated);
+    setShowAddPdfModal(false);
+    setNewPdfSubject("");
+    setNewPdfTitle("");
+    Alert.alert("Added Successfully", "Important PDF is now live in the student archive.");
+  }, [newPdfYear, newPdfSem, newPdfSubject, newPdfTitle, newPdfRegulation, newPdfUrl, newPdfSize]);
+
+  const handleDeletePdf = useCallback(async (id: string) => {
+    Alert.alert(
+      "Confirm Deletion",
+      "Remove this PDF document from the university archive?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const updated = await deleteImportantPdf(id);
+            setPdfList(updated);
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const handleResetDefaults = useCallback(async () => {
+    Alert.alert(
+      "Reset Defaults",
+      "Restore default curated academic materials?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restore",
+          onPress: async () => {
+            const updated = await resetToDefaultPdfs();
+            setPdfList(updated);
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const filteredPdfs = pdfList.filter((item) => {
+    const matchesYear = selectedYear === 0 || item.year === selectedYear;
+    const query = pdfSearch.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      item.title.toLowerCase().includes(query) ||
+      item.subject.toLowerCase().includes(query) ||
+      item.semester.toLowerCase().includes(query);
+    return matchesYear && matchesSearch;
+  });
 
   return (
-    <LinearGradient colors={["#0F172A", "#0891B2"]} style={styles.container}>
+    <LinearGradient colors={[COLORS.canvas, COLORS.canvasEnd]} style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      
       {(update.status === "checking" || update.status === "applying") && (
         <View style={styles.updateBanner}>
           <Text style={styles.updateBannerText}>
@@ -534,192 +722,457 @@ export default function App() {
         </View>
       )}
 
-      {/* WebView stays full-size until scraping is done — overlays sit ON TOP,
-          so the portal page can never flash through while loading. */}
-      <View style={isScrapingFinished ? styles.hiddenWebView : styles.fullWebView}>
-        <WebView
-          key={webViewKey}
-          ref={webViewRef}
-          source={{ uri: "https://jntuaceastudents.classattendance.in/" }}
-          userAgent="Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-          onLoadStart={() => {
-            if (stateRef.current.gatewayError) dispatch({ type: "CLEAR_GATEWAY_ERROR" });
-            if (!stateRef.current.isSplashDismissed && fontsLoaded) {
-              dispatch({ type: "SET_SPLASH_DISMISSED" });
-              void SplashScreen.hideAsync();
-            }
-          }}
-          onNavigationStateChange={handleNavigationStateChange}
-          onMessage={handleMessage}
-          onError={(event) => console.warn("WebView error:", event.nativeEvent.description)}
-          onHttpError={(event) => {
-            if (event.nativeEvent.statusCode === 502) dispatch({ type: "SET_GATEWAY_ERROR" });
-          }}
-          javaScriptEnabled
-          domStorageEnabled
-          incognito={false}
-        />
-        {!isLoggedIn && hasPreviousResult && (
-          <BouncyButton style={styles.prevBtn} onPress={handlePreviousAttendance} activeOpacity={0.88}>
-            <Ionicons name="time" size={18} color={COLORS.onDark} style={{ marginRight: 6 }} />
-            <Text style={styles.prevBtnText}>Previous Attendance</Text>
-          </BouncyButton>
+      {/* ============================================================== */}
+      {/* TAB 1: ATTENDANCE & SCRAPING ENGINE                            */}
+      {/* ============================================================== */}
+      <View style={activeTab === "attendance" ? styles.tabContentActive : styles.tabContentHidden}>
+        {/* WebView stays full-size until scraping is done */}
+        <View style={isScrapingFinished ? styles.hiddenWebView : styles.fullWebView}>
+          <WebView
+            key={webViewKey}
+            ref={webViewRef}
+            source={{ uri: "https://jntuaceastudents.classattendance.in/" }}
+            userAgent="Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            onLoadStart={() => {
+              if (stateRef.current.gatewayError) dispatch({ type: "CLEAR_GATEWAY_ERROR" });
+              if (!stateRef.current.isSplashDismissed && fontsLoaded) {
+                dispatch({ type: "SET_SPLASH_DISMISSED" });
+                void SplashScreen.hideAsync();
+              }
+            }}
+            onNavigationStateChange={handleNavigationStateChange}
+            onMessage={handleMessage}
+            onError={(event) => console.warn("WebView error:", event.nativeEvent.description)}
+            onHttpError={(event) => {
+              if (event.nativeEvent.statusCode === 502) dispatch({ type: "SET_GATEWAY_ERROR" });
+            }}
+            javaScriptEnabled
+            domStorageEnabled
+            incognito={false}
+          />
+          {!isLoggedIn && hasPreviousResult && (
+            <BouncyButton style={styles.prevBtn} onPress={handlePreviousAttendance} activeOpacity={0.88}>
+              <Ionicons name="time-outline" size={18} color={COLORS.ink} style={{ marginRight: 8 }} />
+              <Text style={styles.prevBtnText}>View Cached Attendance</Text>
+            </BouncyButton>
+          )}
+        </View>
+
+        {/* 502 GATEWAY ERROR OVERLAY */}
+        {gatewayError && (
+          <View style={styles.overlayFull}>
+            <View style={styles.errorCard}>
+              <Ionicons name="cloud-offline-outline" size={40} color={COLORS.error} style={{ marginBottom: 12 }} />
+              <Text style={styles.syncTitle}>{"Main Portal\nis Unavailable"}</Text>
+              <Text style={styles.syncSub}>The attendance server returned a 502 Bad Gateway response. Please try again later.</Text>
+              <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
+                <Text style={styles.errorBtnText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* SYNC LOADER OVERLAY */}
+        {isLoggedIn && !isScrapingFinished && !isSelectionError && (
+          <View style={styles.overlayFull}>
+            <View style={styles.syncRingOuter}>
+              <View style={styles.syncRingInner}>
+                <Ionicons name="sparkles" size={28} color={COLORS.primary} />
+              </View>
+            </View>
+            <PulsingText style={styles.syncTitle}>Syncing Attendance</PulsingText>
+            <Text style={styles.syncSub}>Analyzing classes & records from portal…</Text>
+            <View style={styles.syncStatusBadge}>
+              <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.success} style={{ marginRight: 6 }} />
+              <Text style={styles.syncStatusText}>Encrypted device-only session</Text>
+            </View>
+          </View>
+        )}
+
+        {/* SELECTION ERROR OVERLAY */}
+        {isSelectionError && isLoggedIn && !isScrapingFinished && (
+          <View style={styles.overlayFull}>
+            <View style={styles.errorCard}>
+              <TouchableOpacity style={styles.closeIcon} onPress={() => dispatch({ type: "CLEAR_SELECTION_ERROR" })}>
+                <Ionicons name="close" size={18} color={COLORS.body} />
+              </TouchableOpacity>
+              <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} style={{ marginBottom: 10 }} />
+              <Text style={styles.errorTitle}>Portal Synchronization Paused</Text>
+              <Text style={styles.errorBody}>
+                The student portal format was recently updated, delaying automated detection.
+                Please reload to retry session extraction.
+              </Text>
+              <BouncyButton style={styles.errorBtn} onPress={handleFullReset}>
+                <Text style={styles.errorBtnText}>Retry Extraction</Text>
+              </BouncyButton>
+            </View>
+          </View>
+        )}
+
+        {/* DASHBOARD: Scraped records and aggregate cards */}
+        {isLoggedIn && isScrapingFinished && (
+          <FadeInView style={styles.dashboardContainer}>
+            <View style={styles.sigRow}>
+              <View style={styles.wordmark}>
+                <View style={styles.wordmarkLogo}>
+                  <Ionicons name="school" size={15} color={COLORS.onDark} />
+                </View>
+                <Text style={styles.wordmarkText}>JNTUA</Text>
+                <View style={styles.wordmarkBadge}>
+                  <Text style={styles.wordmarkRole}>ATTENDANCE</Text>
+                </View>
+              </View>
+              <BouncyButton style={styles.iconBtn} onPress={handleFullReset} activeOpacity={0.7}>
+                <Ionicons name="refresh-outline" size={18} color={COLORS.body} />
+              </BouncyButton>
+            </View>
+
+            <FlatList
+              style={{ flex: 1 }}
+              data={subjectsData}
+              keyExtractor={(item, index) => `${item.subjectName}-${index}`}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              ListHeaderComponent={
+                <View>
+                  {studentInfo && (
+                    <View style={styles.profileCard}>
+                      <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarText}>
+                          {studentInfo.name.trim().charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.profileInfo}>
+                        <Text style={styles.profileName} numberOfLines={1}>{studentInfo.name}</Text>
+                        <Text style={styles.profileMeta} numberOfLines={1}>
+                          {studentInfo.admissionNo} • {studentInfo.className}
+                        </Text>
+                      </View>
+                      <View style={styles.liveStatusPill}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveStatusText}>Verified</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={styles.overallCard}>
+                    <View style={styles.overallTopRow}>
+                      <View style={styles.eyebrowRow}>
+                        <View style={[styles.eyebrowDot, { backgroundColor: getAttendanceColor(overallPercentageVal) }]} />
+                        <Text style={styles.eyebrowSm}>SEMESTER ATTENDANCE</Text>
+                      </View>
+                      <View style={[styles.badgePill, isShortage ? styles.badgeShortage : styles.badgeNormal]}>
+                        <Text style={[styles.badgePillText, isShortage ? styles.badgeShortageText : styles.badgeNormalText]}>
+                          {isShortage ? "Shortage Risk" : "Good Standing"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.bigPctRow}>
+                      <Text style={[styles.bigPct, { color: getAttendanceColor(overallPercentageVal) }]}>
+                        {overallPercentage}
+                        <Text style={styles.bigPctSign}>%</Text>
+                      </Text>
+                      <View style={styles.targetBadge}>
+                        <Text style={styles.targetBadgeLabel}>Goal: 75%</Text>
+                      </View>
+                    </View>
+
+                    {/* Overall Progress Bar with 75% Threshold Notch */}
+                    <View style={styles.overallTrackContainer}>
+                      <View style={styles.overallTrackBg}>
+                        <View
+                          style={[
+                            styles.overallTrackFill,
+                            {
+                              width: `${Math.min(100, Math.max(0, overallPercentageVal))}%`,
+                              backgroundColor: getAttendanceColor(overallPercentageVal),
+                            },
+                          ]}
+                        />
+                        <View style={styles.overallNotch} />
+                      </View>
+                      <View style={styles.overallNotchLabels}>
+                        <Text style={styles.trackMinLabel}>0%</Text>
+                        <Text style={styles.trackGoalLabel}>75% threshold</Text>
+                        <Text style={styles.trackMaxLabel}>100%</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.miniStats}>
+                      <View style={styles.miniStat}>
+                        <Text style={styles.miniStatNum}>{overallClasses}</Text>
+                        <Text style={styles.miniStatLabel}>TOTAL HELD</Text>
+                      </View>
+                      <View style={styles.miniDivider} />
+                      <View style={styles.miniStat}>
+                        <Text style={[styles.miniStatNum, { color: COLORS.success }]}>{overallPresent}</Text>
+                        <Text style={styles.miniStatLabel}>ATTENDED</Text>
+                      </View>
+                      <View style={styles.miniDivider} />
+                      <View style={styles.miniStat}>
+                        <Text style={[styles.miniStatNum, { color: overallAbsent > 0 ? COLORS.error : COLORS.muted }]}>{overallAbsent}</Text>
+                        <Text style={styles.miniStatLabel}>MISSED</Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.skipRow, isShortage ? styles.skipRowAlert : styles.skipRowSafe]}>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={styles.skipTitle}>
+                          {isShortage ? "Attendance Shortage" : "Safe to Skip"}
+                        </Text>
+                        <Text style={styles.skipSub}>
+                          {isShortage
+                            ? "Classes needed to reach the 75% threshold"
+                            : "Classes you can miss while staying >= 75%"}
+                        </Text>
+                      </View>
+                      <View style={[styles.skipBadge, isShortage ? styles.skipBadgeAlert : styles.skipBadgeSafe]}>
+                        <Text style={[styles.skipBadgeText, isShortage ? styles.skipBadgeAlertText : styles.skipBadgeSafeText]}>
+                          {isShortage
+                            ? `+${calculateClassesToReach75(overallPresent, overallClasses)} classes`
+                            : `${maxOverallSkippable} ${maxOverallSkippable === 1 ? "class" : "classes"}`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.listHead}>
+                    <Text style={styles.eyebrowSm}>COURSES & LABS</Text>
+                    <View style={styles.subjectCountBadge}>
+                      <Text style={styles.listCount}>{subjectsData.length} Subjects</Text>
+                    </View>
+                  </View>
+                </View>
+              }
+              ListFooterComponent={
+                <View style={styles.footBand}>
+                  <View style={styles.footIconWrap}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.footTitle}>JNTUA Attendance</Text>
+                  <Text style={styles.footSub}>Calculations are based on the official 75% university threshold.</Text>
+                </View>
+              }
+              renderItem={({ item, index }) => (
+                <AnimatedSubjectCard
+                  item={item}
+                  index={index}
+                  dispatch={dispatch}
+                  getAttendanceColor={getAttendanceColor}
+                  calculateCanSkip={calculateCanSkip}
+                  calculateClassesToReach75={calculateClassesToReach75}
+                />
+              )}
+            />
+          </FadeInView>
         )}
       </View>
 
-      {/* ---------- 502 GATEWAY ERROR · opaque overlay with crab ---------- */}
-      {gatewayError && (
-        <View style={styles.overlayFull}>
-          <Text style={styles.syncTitle}>{"Main attendance\nwebsite is not working"}</Text>
-          <Text style={styles.syncSub}>The portal is temporarily unavailable (502).</Text>
-          <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
-            <Text style={styles.errorBtnText}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ---------- SYNC · opaque overlay, no webpage flash ---------- */}
-      {isLoggedIn && !isScrapingFinished && !isSelectionError && (
-        <View style={styles.overlayFull}>
-          <PulsingText style={styles.syncTitle}>{"Loading attendance..."}</PulsingText>
-        </View>
-      )}
-
-      {/* ---------- SELECTION ERROR · opaque overlay ---------- */}
-      {isSelectionError && isLoggedIn && !isScrapingFinished && (
-        <View style={styles.overlayFull}>
-          <View style={styles.errorCard}>
-            <TouchableOpacity style={styles.closeIcon} onPress={() => dispatch({ type: "CLEAR_SELECTION_ERROR" })}>
-              <Ionicons name="close" size={20} color={COLORS.body} />
-            </TouchableOpacity>
-            <Ionicons name="alert-circle" size={40} color={COLORS.error} style={{ marginBottom: 10 }} />
-            <Text style={styles.errorTitle}>Couldn’t load subjects right now</Text>
-            <Text style={styles.errorBody}>
-              The attendance portal was recently updated, so the app can’t detect your semester or
-              subjects at the moment. This is a temporary issue — we’re working on a fix.
-            </Text>
-            <BouncyButton style={styles.errorBtn} onPress={handleFullReset}>
-              <Text style={styles.errorBtnText}>Try again</Text>
-            </BouncyButton>
-          </View>
-        </View>
-      )}
-
-      {/* ---------- DASHBOARD · profile + overall scroll with the list ---------- */}
-      {isLoggedIn && isScrapingFinished && (
-        <FadeInView style={styles.dashboardContainer}>
-          <View style={styles.sigRow}>
-            <View style={styles.wordmark}>
-              <Ionicons name="star" size={16} color={COLORS.primary} style={{ marginRight: 2 }} />
-              <Text style={styles.wordmarkText}>JNTUA</Text>
-              <Text style={styles.wordmarkRole}>·Attendance</Text>
+      {/* ============================================================== */}
+      {/* TAB 2: IMPORTANT PDFS & CURATED ACADEMIC ARCHIVE               */}
+      {/* ============================================================== */}
+      <View style={activeTab === "pdfs" ? styles.tabContentActive : styles.tabContentHidden}>
+        <FadeInView style={styles.pdfArchiveContainer}>
+          {/* Header */}
+          <View style={styles.pdfHeaderRow}>
+            <View>
+              <Text style={styles.eyebrowSm}>ACADEMIC ARCHIVE</Text>
+              <Text style={styles.vogueHeading}>Important PDFs</Text>
             </View>
-            <BouncyButton style={styles.iconBtn} onPress={handleFullReset} activeOpacity={0.7}>
-              <Ionicons name="refresh" size={18} color={COLORS.body} />
-            </BouncyButton>
+
+            <View style={styles.pdfHeaderActions}>
+              {isAdminMode ? (
+                <>
+                  <BouncyButton
+                    style={styles.adminActiveBadge}
+                    onPress={() => setIsAdminMode(false)}
+                  >
+                    <Ionicons name="shield-checkmark" size={13} color={COLORS.success} style={{ marginRight: 4 }} />
+                    <Text style={styles.adminActiveText}>Admin</Text>
+                  </BouncyButton>
+                  <BouncyButton
+                    style={styles.addPdfBtn}
+                    onPress={() => setShowAddPdfModal(true)}
+                  >
+                    <Ionicons name="add" size={16} color={COLORS.onDark} />
+                    <Text style={styles.addPdfBtnText}>Add PDF</Text>
+                  </BouncyButton>
+                </>
+              ) : (
+                <BouncyButton
+                  style={styles.adminLockBtn}
+                  onPress={() => setShowPinModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="key-outline" size={17} color={COLORS.body} />
+                </BouncyButton>
+              )}
+            </View>
           </View>
 
+          {/* Search Bar */}
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={17} color={COLORS.muted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by subject, code, or topic…"
+              placeholderTextColor={COLORS.mutedSoft}
+              value={pdfSearch}
+              onChangeText={setPdfSearch}
+            />
+            {!!pdfSearch && (
+              <TouchableOpacity onPress={() => setPdfSearch("")}>
+                <Ionicons name="close-circle" size={16} color={COLORS.muted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Year Filter Pills */}
+          <View style={styles.filterPillsRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPillsScroll}>
+              {([0, 1, 2, 3, 4] as const).map((yr) => {
+                const label = yr === 0 ? "All Years" : `${yr}${yr === 1 ? "st" : yr === 2 ? "nd" : yr === 3 ? "rd" : "th"} Year`;
+                const isSelected = selectedYear === yr;
+                return (
+                  <TouchableOpacity
+                    key={yr}
+                    style={[styles.filterPill, isSelected && styles.filterPillActive]}
+                    onPress={() => setSelectedYear(yr)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.filterPillText, isSelected && styles.filterPillTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* PDF Documents List */}
           <FlatList
-            style={{ flex: 1 }}
-            data={subjectsData}
-            keyExtractor={(item, index) => `${item.subjectName}-${index}`}
+            data={filteredPdfs}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
-            ListHeaderComponent={
-              <View>
-                {studentInfo && (
-                  <BouncyButton style={styles.profileCard} activeOpacity={0.9}>
-                    <Text style={styles.profileName} numberOfLines={1}>{studentInfo.name}</Text>
-                    <View style={styles.profileMetaRow}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.profileMeta} numberOfLines={1}>
-                        {studentInfo.admissionNo} • {studentInfo.className}
-                      </Text>
-                    </View>
+            ListEmptyComponent={
+              <View style={styles.emptyPdfState}>
+                <Ionicons name="document-text-outline" size={38} color={COLORS.mutedSoft} style={{ marginBottom: 10 }} />
+                <Text style={styles.emptyPdfTitle}>No PDFs Found</Text>
+                <Text style={styles.emptyPdfSub}>
+                  {pdfSearch ? "Try adjusting your search query." : "No documents uploaded for this year category yet."}
+                </Text>
+                {isAdminMode && (
+                  <BouncyButton style={[styles.addPdfBtn, { marginTop: 14 }]} onPress={() => setShowAddPdfModal(true)}>
+                    <Text style={styles.addPdfBtnText}>+ Upload First Document</Text>
                   </BouncyButton>
                 )}
-
-                <View style={styles.overallCard}>
-                  <View style={styles.overallTopRow}>
-                    <Text style={styles.eyebrowSm}>OVERALL ATTENDANCE</Text>
-                    <View style={styles.badgePill}>
-                      <Text style={styles.badgePillText}>{isShortage ? "Shortage" : "Semester 1"}</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.bigPct, { color: getAttendanceColor(overallPercentageVal) }]}>
-                    {overallPercentage}
-                    <Text style={styles.bigPctSign}>%</Text>
-                  </Text>
-                  <View style={styles.miniStats}>
-                    <View style={styles.miniStat}>
-                      <Text style={styles.miniStatNum}>{overallClasses}</Text>
-                      <Text style={styles.miniStatLabel}>TOT</Text>
-                    </View>
-                    <View style={styles.miniDivider} />
-                    <View style={styles.miniStat}>
-                      <Text style={styles.miniStatNum}>{overallPresent}</Text>
-                      <Text style={styles.miniStatLabel}>ATT</Text>
-                    </View>
-                    <View style={styles.miniDivider} />
-                    <View style={styles.miniStat}>
-                      <Text style={styles.miniStatNum}>{overallAbsent}</Text>
-                      <Text style={styles.miniStatLabel}>ABS</Text>
-                    </View>
-                  </View>
-                  <View style={styles.skipRow}>
-                    <View>
-                      <Text style={styles.skipTitle}>Overall Safe to skip</Text>
-                      <Text style={styles.skipSub}>while staying above 75%</Text>
-                    </View>
-                    <View style={[styles.badgeCoral, maxOverallSkippable <= 0 && styles.badgeMute]}>
-                      <Text style={[styles.badgeCoralText, maxOverallSkippable <= 0 && styles.badgeMuteText]}>
-                        {maxOverallSkippable} {maxOverallSkippable === 1 ? "class" : "classes"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.listHead}>
-                  <Text style={styles.eyebrowSm}>SUBJECTS</Text>
-                  <Text style={styles.listCount}>{subjectsData.length}</Text>
-                </View>
               </View>
             }
-            ListFooterComponent={
-              <View>
-                <View style={styles.footBand}>
-                  <Ionicons name="star" size={18} color={COLORS.onDark} />
-                  <Text style={styles.footTitle}>JNTUA Attendance</Text>
+            renderItem={({ item }) => (
+              <View style={styles.pdfCard}>
+                <View style={styles.pdfCardMetaRow}>
+                  <View style={styles.yearTag}>
+                    <Text style={styles.yearTagText}>Year {item.year} · Sem {item.semester}</Text>
+                  </View>
+                  {!!item.regulation && (
+                    <View style={styles.regTag}>
+                      <Text style={styles.regTagText}>{item.regulation}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.pdfSubjectText} numberOfLines={1}>{item.subject}</Text>
+                </View>
+
+                <Text style={styles.pdfCardTitle} numberOfLines={2}>{item.title}</Text>
+
+                <View style={styles.pdfCardFooter}>
+                  <Text style={styles.pdfMetaInfo}>{item.fileSize} • Added {item.uploadedAt}</Text>
+                  
+                  <View style={styles.pdfCardActions}>
+                    <BouncyButton
+                      style={styles.openPdfBtn}
+                      onPress={() => handleOpenPdf(item.fileUrl)}
+                    >
+                      <Ionicons name="open-outline" size={13} color={COLORS.onDark} style={{ marginRight: 5 }} />
+                      <Text style={styles.openPdfBtnText}>Open</Text>
+                    </BouncyButton>
+
+                    {isAdminMode && (
+                      <TouchableOpacity
+                        style={styles.deletePdfBtn}
+                        onPress={() => handleDeletePdf(item.id)}
+                      >
+                        <Ionicons name="trash-outline" size={15} color={COLORS.error} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
-            }
-            renderItem={({ item, index }) => (
-              <AnimatedSubjectCard
-                item={item}
-                index={index}
-                dispatch={dispatch}
-                getAttendanceColor={getAttendanceColor}
-                calculateCanSkip={calculateCanSkip}
-                calculateClassesToReach75={calculateClassesToReach75}
-              />
             )}
           />
-          {!adFailed && (
-            <View style={styles.adBanner}>
-              <BannerAdWrapper onAdFailedToLoad={() => setAdFailed(true)} />
-            </View>
-          )}
         </FadeInView>
+      </View>
+
+      {/* ============================================================== */}
+      {/* NON-INTRUSIVE AD BANNER (OPTIMAL POSITION ABOVE NAV BAR)       */}
+      {/* ============================================================== */}
+      {!adFailed && (
+        <View style={styles.adBanner}>
+          <BannerAdWrapper onAdFailedToLoad={() => setAdFailed(true)} />
+        </View>
       )}
 
-      {/* ---------- DATE LOG SHEET ---------- */}
+      {/* ============================================================== */}
+      {/* MINIMAL LUXURY BOTTOM NAVIGATION BAR                           */}
+      {/* ============================================================== */}
+      <View style={styles.navBar}>
+        <TouchableOpacity
+          style={[styles.navTab, activeTab === "attendance" && styles.navTabActive]}
+          onPress={() => setActiveTab("attendance")}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={activeTab === "attendance" ? "school" : "school-outline"}
+            size={20}
+            color={activeTab === "attendance" ? COLORS.ink : COLORS.muted}
+          />
+          <Text style={[styles.navLabel, activeTab === "attendance" && styles.navLabelActive]}>
+            ATTENDANCE
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navTab, activeTab === "pdfs" && styles.navTabActive]}
+          onPress={() => setActiveTab("pdfs")}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={activeTab === "pdfs" ? "document-text" : "document-text-outline"}
+            size={20}
+            color={activeTab === "pdfs" ? COLORS.ink : COLORS.muted}
+          />
+          <Text style={[styles.navLabel, activeTab === "pdfs" && styles.navLabelActive]}>
+            IMPORTANT PDFS
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ============================================================== */}
+      {/* MODAL: DATE LOG SHEET                                          */}
+      {/* ============================================================== */}
       <Modal
         visible={!!selectedSubject}
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         onRequestClose={handleCloseModal}
       >
         <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={handleCloseModal}
+          />
           <View style={styles.modalSheet}>
             {selectedSubject && (
               <>
@@ -728,35 +1181,230 @@ export default function App() {
                   <View style={{ flex: 1, marginRight: 12 }}>
                     <Text style={styles.modalTitle} numberOfLines={2}>{selectedSubject.subjectName}</Text>
                     <Text style={styles.modalSub}>
-                      Attendance log · {selectedSubject.present} attended, {selectedSubject.absent} missed
+                      {selectedSubject.present} attended · {selectedSubject.absent} missed · {selectedSubject.percentage}%
                     </Text>
                   </View>
                   <TouchableOpacity style={styles.closeIcon} onPress={handleCloseModal}>
-                    <Ionicons name="close" size={20} color={COLORS.body} />
+                    <Ionicons name="close" size={18} color={COLORS.body} />
                   </TouchableOpacity>
                 </View>
                 <FlatList
                   data={selectedSubject.records}
                   keyExtractor={(_, index) => index.toString()}
                   showsVerticalScrollIndicator={false}
-                  renderItem={({ item }) => (
-                    <View style={styles.logRow}>
-                      <View>
-                        <Text style={styles.logDate}>{item.date}</Text>
-                        {!!item.time && <Text style={styles.logTime}>{item.time}</Text>}
-                      </View>
-                      <View style={styles.logBadge}>
-                        <Text
-                          style={[styles.logBadgeText, { color: STATUS_COLOR[item.status] }]}
-                        >
-                          {item.status}
-                        </Text>
-                      </View>
+                  contentContainerStyle={{ paddingVertical: 8 }}
+                  ListEmptyComponent={
+                    <View style={styles.emptyLogWrap}>
+                      <Ionicons name="calendar-outline" size={28} color={COLORS.mutedSoft} style={{ marginBottom: 8 }} />
+                      <Text style={styles.emptyLogText}>No individual class dates logged for this subject yet.</Text>
                     </View>
-                  )}
+                  }
+                  renderItem={({ item }) => {
+                    const isPresent = item.status === "Present";
+                    return (
+                      <View style={styles.logRow}>
+                        <View style={styles.logLeft}>
+                          <View style={[styles.logIndicatorDot, { backgroundColor: STATUS_COLOR[item.status] }]} />
+                          <View>
+                            <Text style={styles.logDate}>{item.date}</Text>
+                            {!!item.time && <Text style={styles.logTime}>{item.time}</Text>}
+                          </View>
+                        </View>
+                        <View style={[styles.logBadge, isPresent ? styles.logBadgePresent : styles.logBadgeAbsent]}>
+                          <Ionicons
+                            name={isPresent ? "checkmark" : "close"}
+                            size={12}
+                            color={STATUS_COLOR[item.status]}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text
+                            style={[styles.logBadgeText, { color: STATUS_COLOR[item.status] }]}
+                          >
+                            {item.status}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  }}
                 />
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================== */}
+      {/* MODAL: ADMIN PIN UNLOCK                                        */}
+      {/* ============================================================== */}
+      <Modal
+        visible={showPinModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowPinModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowPinModal(false)}
+          />
+          <View style={[styles.modalSheet, { paddingBottom: 32 }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Admin Access</Text>
+                <Text style={styles.modalSub}>Enter the 4-digit passkey to curate university materials.</Text>
+              </View>
+              <TouchableOpacity style={styles.closeIcon} onPress={() => setShowPinModal(false)}>
+                <Ionicons name="close" size={18} color={COLORS.body} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginVertical: 20 }}>
+              <TextInput
+                style={[styles.pinInput, pinError && styles.pinInputError]}
+                placeholder="••••"
+                placeholderTextColor={COLORS.mutedSoft}
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={8}
+                value={pinInput}
+                onChangeText={(t) => {
+                  setPinInput(t);
+                  setPinError(false);
+                }}
+              />
+              {pinError && (
+                <Text style={styles.pinErrorText}>Invalid passcode. Please retry.</Text>
+              )}
+              <Text style={styles.pinHintText}>Default passcode: 1234</Text>
+            </View>
+
+            <BouncyButton style={styles.adminSubmitBtn} onPress={handleVerifyPin}>
+              <Text style={styles.adminSubmitBtnText}>Unlock Admin Mode</Text>
+            </BouncyButton>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================== */}
+      {/* MODAL: ADD IMPORTANT PDF (ADMIN)                               */}
+      {/* ============================================================== */}
+      <Modal
+        visible={showAddPdfModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddPdfModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowAddPdfModal(false)}
+          />
+          <View style={[styles.modalSheet, { maxHeight: "88%" }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Add Important PDF</Text>
+                <Text style={styles.modalSub}>Curate academic notes for students.</Text>
+              </View>
+              <TouchableOpacity style={styles.closeIcon} onPress={() => setShowAddPdfModal(false)}>
+                <Ionicons name="close" size={18} color={COLORS.body} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 12 }}>
+              {/* Year Select */}
+              <Text style={styles.formLabel}>Target Year</Text>
+              <View style={styles.formYearRow}>
+                {([1, 2, 3, 4] as const).map((yr) => (
+                  <TouchableOpacity
+                    key={yr}
+                    style={[styles.formYearBtn, newPdfYear === yr && styles.formYearBtnActive]}
+                    onPress={() => setNewPdfYear(yr)}
+                  >
+                    <Text style={[styles.formYearBtnText, newPdfYear === yr && styles.formYearBtnTextActive]}>
+                      Year {yr}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Semester & Regulation */}
+              <View style={styles.formRow2}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.formLabel}>Semester</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 1-1, 2-2"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    value={newPdfSem}
+                    onChangeText={setNewPdfSem}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.formLabel}>Regulation</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. R23/R20"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    value={newPdfRegulation}
+                    onChangeText={setNewPdfRegulation}
+                  />
+                </View>
+              </View>
+
+              {/* Subject */}
+              <Text style={styles.formLabel}>Subject Name</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. Data Structures, Applied Physics"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={newPdfSubject}
+                onChangeText={setNewPdfSubject}
+              />
+
+              {/* Document Title */}
+              <Text style={styles.formLabel}>Document Title</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. Formula Handbook & Solved Papers"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={newPdfTitle}
+                onChangeText={setNewPdfTitle}
+              />
+
+              {/* PDF URL */}
+              <Text style={styles.formLabel}>Document Link / URL</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="https://..."
+                placeholderTextColor={COLORS.mutedSoft}
+                autoCapitalize="none"
+                keyboardType="url"
+                value={newPdfUrl}
+                onChangeText={setNewPdfUrl}
+              />
+
+              {/* File Size */}
+              <Text style={styles.formLabel}>Estimated File Size</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. 2.4 MB"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={newPdfSize}
+                onChangeText={setNewPdfSize}
+              />
+
+              <BouncyButton style={[styles.adminSubmitBtn, { marginTop: 20 }]} onPress={handleCreatePdf}>
+                <Text style={styles.adminSubmitBtnText}>Publish to Archive</Text>
+              </BouncyButton>
+
+              <TouchableOpacity style={styles.resetPdfsLink} onPress={handleResetDefaults}>
+                <Text style={styles.resetPdfsLinkText}>Reset Archive to University Defaults</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -765,162 +1413,1086 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.canvas, paddingTop: 40 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.canvas,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight ? StatusBar.currentHeight + 6 : 38) : 38,
+  },
+
+  tabContentActive: {
+    flex: 1,
+  },
+  tabContentHidden: {
+    display: "none",
+  },
 
   updateBanner: {
     backgroundColor: COLORS.surfaceCard,
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 16,
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.hairline,
   },
-  updateBannerText: { fontSize: 12, fontWeight: "600", color: COLORS.primaryActive, letterSpacing: 0.3 },
+  updateBannerText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 12,
+    color: COLORS.primary,
+    letterSpacing: 0.3,
+  },
 
   hiddenWebView: { width: 0, height: 0, overflow: "hidden" },
   fullWebView: { flex: 1 },
 
-  /* Previous attendance — floating coral pill, lifted off the bottom */
+  /* Previous cached attendance pill */
   prevBtn: {
     position: "absolute",
-    bottom: 56,
-    left: 28,
-    right: 28,
+    bottom: 36,
+    left: 24,
+    right: 24,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
     paddingVertical: 14,
     borderRadius: 9999,
-    elevation: 6,
-    shadowColor: "#181715",
-    shadowOpacity: 0.25,
+    elevation: 4,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
   },
-  prevBtnIcon: { color: COLORS.onDark, fontSize: 16, fontWeight: "700", marginRight: 8 },
-  prevBtnText: { color: COLORS.onDark, fontWeight: "600", fontSize: 14, letterSpacing: 0.2 },
+  prevBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    color: COLORS.ink,
+    fontSize: 14,
+    letterSpacing: 0.2,
+  },
 
-  /* Opaque full-screen overlays — kill the webpage flash */
+  /* Overlays */
   overlayFull: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    backgroundColor: "#0F172A",
+    backgroundColor: COLORS.canvas,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 28,
   },
 
-  syncEyebrow: { fontSize: 11, fontWeight: "500", letterSpacing: 1.6, color: COLORS.primary, marginTop: 20 },
-  syncTitle: { fontFamily: FONT_BOLD, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink, lineHeight: 31, marginTop: 10, textAlign: "center" },
-  syncSub: { fontFamily: FONT_REGULAR, fontSize: 12.5, color: COLORS.muted, marginTop: 8 },
-  syncPct: { fontFamily: FONT_BOLD, fontSize: 54, letterSpacing: -2, color: COLORS.primary, lineHeight: 60, marginTop: 16 },
-  syncPctSign: { fontSize: 24, color: COLORS.mutedSoft },
-  syncFine: { fontSize: 10.5, color: COLORS.mutedSoft, marginTop: 14, letterSpacing: 0.3 },
+  syncRingOuter: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 1,
+    borderColor: "rgba(15, 23, 42, 0.1)",
+    backgroundColor: "rgba(15, 23, 42, 0.03)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  syncRingInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(15, 23, 42, 0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  syncTitle: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 26,
+    letterSpacing: -0.4,
+    color: COLORS.ink,
+    textAlign: "center",
+  },
+  syncSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 13,
+    color: COLORS.muted,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  syncStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.surfaceCard,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  syncStatusText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 12,
+    color: COLORS.muted,
+  },
 
   errorCard: {
     width: "100%",
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  errorTitle: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 21,
+    letterSpacing: -0.3,
+    color: COLORS.ink,
+    marginTop: 12,
+    textAlign: "center",
+  },
+  errorBody: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 13,
+    lineHeight: 20,
+    color: COLORS.muted,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  errorBtn: {
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: 18,
+  },
+  errorBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    color: COLORS.onDark,
+    fontSize: 14,
+  },
+  closeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    backgroundColor: COLORS.surfaceCard,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Dashboard */
+  dashboardContainer: { flex: 1, paddingHorizontal: 18 },
+  sigRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  wordmark: { flexDirection: "row", alignItems: "center" },
+  wordmarkLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  wordmarkText: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 23,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: COLORS.ink,
+  },
+  wordmarkBadge: {
+    backgroundColor: COLORS.surfacePill,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  wordmarkRole: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 9.5,
+    letterSpacing: 1.4,
+    color: COLORS.muted,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  profileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+  },
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfacePill,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  avatarText: {
+    fontFamily: FONT_BOLD,
+    fontSize: 17,
+    color: COLORS.primary,
+  },
+  profileInfo: { flex: 1 },
+  profileName: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 16,
+    letterSpacing: -0.3,
+    color: COLORS.ink,
+  },
+  profileMeta: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  liveStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.successSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 9999,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.live,
+    marginRight: 5,
+  },
+  liveStatusText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 10.5,
+    color: COLORS.success,
+  },
+
+  overallCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    elevation: 3,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+  },
+  overallTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  eyebrowRow: { flexDirection: "row", alignItems: "center" },
+  eyebrowDot: { width: 7, height: 7, borderRadius: 4, marginRight: 7 },
+  eyebrowSm: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    color: COLORS.muted,
+    textTransform: "uppercase",
+  },
+  badgePill: {
+    borderRadius: 9999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  badgeNormal: { backgroundColor: COLORS.successSoft },
+  badgeNormalText: { fontFamily: FONT_MEDIUM, fontSize: 10.5, color: COLORS.success },
+  badgeShortage: { backgroundColor: COLORS.errorSoft },
+  badgeShortageText: { fontFamily: FONT_MEDIUM, fontSize: 10.5, color: COLORS.error },
+  badgePillText: { fontFamily: FONT_MEDIUM, fontSize: 10.5 },
+
+  bigPctRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginTop: 4,
+  },
+  bigPct: {
+    fontFamily: FONT_BOLD,
+    fontSize: 54,
+    letterSpacing: -2,
+    lineHeight: 58,
+  },
+  bigPctSign: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 26,
+    color: COLORS.mutedSoft,
+  },
+  targetBadge: {
+    backgroundColor: COLORS.surfacePill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  targetBadgeLabel: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+
+  overallTrackContainer: { marginVertical: 12 },
+  overallTrackBg: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "rgba(15, 23, 42, 0.06)",
+    overflow: "visible",
+    position: "relative",
+    justifyContent: "center",
+  },
+  overallTrackFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  overallNotch: {
+    position: "absolute",
+    left: "75%",
+    top: -3,
+    bottom: -3,
+    width: 2.5,
+    borderRadius: 1,
+    backgroundColor: COLORS.ink,
+    opacity: 0.75,
+  },
+  overallNotchLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  trackMinLabel: { fontFamily: FONT_REGULAR, fontSize: 10, color: COLORS.mutedSoft },
+  trackGoalLabel: { fontFamily: FONT_MEDIUM, fontSize: 10, color: COLORS.muted },
+  trackMaxLabel: { fontFamily: FONT_REGULAR, fontSize: 10, color: COLORS.mutedSoft },
+
+  miniStats: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairlineSoft,
+    paddingTop: 14,
+    marginTop: 8,
+  },
+  miniStat: { flex: 1, alignItems: "center" },
+  miniStatNum: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 18,
+    color: COLORS.ink,
+  },
+  miniStatLabel: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 9,
+    letterSpacing: 1.1,
+    color: COLORS.mutedSoft,
+    marginTop: 3,
+  },
+  miniDivider: { width: 1, backgroundColor: COLORS.hairlineSoft },
+
+  skipRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+  },
+  skipRowSafe: {
+    backgroundColor: COLORS.successSoft,
+    borderWidth: 1,
+    borderColor: "rgba(5, 150, 105, 0.2)",
+  },
+  skipRowAlert: {
+    backgroundColor: COLORS.errorSoft,
+    borderWidth: 1,
+    borderColor: "rgba(225, 29, 72, 0.2)",
+  },
+  skipTitle: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 13,
+    color: COLORS.ink,
+  },
+  skipSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  skipBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 9999,
+  },
+  skipBadgeSafe: { backgroundColor: COLORS.success },
+  skipBadgeSafeText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11.5,
+    color: COLORS.onDark,
+  },
+  skipBadgeAlert: { backgroundColor: COLORS.error },
+  skipBadgeAlertText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11.5,
+    color: COLORS.onDark,
+  },
+  skipBadgeText: { fontFamily: FONT_SEMIBOLD, fontSize: 11.5 },
+
+  listHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  subjectCountBadge: {
+    backgroundColor: COLORS.surfacePill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9999,
+  },
+  listCount: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+
+  /* Subject Card */
+  subjectCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+  },
+  subjectRow1: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  subjectName: {
+    flex: 1,
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 14.5,
+    color: COLORS.ink,
+    lineHeight: 20,
+    marginRight: 10,
+  },
+  subjectPctWrap: { alignItems: "flex-end" },
+  subjectPct: {
+    fontFamily: FONT_BOLD,
+    fontSize: 22,
+    letterSpacing: -0.6,
+  },
+
+  cardTrackWrap: { marginVertical: 10 },
+  cardTrackBg: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(15, 23, 42, 0.06)",
+    overflow: "visible",
+    position: "relative",
+    justifyContent: "center",
+  },
+  cardTrackFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  cardTargetNotch: {
+    position: "absolute",
+    left: "75%",
+    top: -2,
+    bottom: -2,
+    width: 2,
+    borderRadius: 1,
+    backgroundColor: COLORS.ink,
+    opacity: 0.6,
+  },
+
+  subjectRow2: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  shortStats: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  shortStatsBold: {
+    fontFamily: FONT_SEMIBOLD,
+    color: COLORS.ink,
+  },
+
+  statusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 9999,
+  },
+  statusChipSuccess: { backgroundColor: COLORS.successSoft },
+  statusChipSuccessText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11,
+    color: COLORS.success,
+  },
+  statusChipDanger: { backgroundColor: COLORS.errorSoft },
+  statusChipDangerText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11,
+    color: COLORS.error,
+  },
+  statusChipNeutral: { backgroundColor: COLORS.surfacePill },
+  statusChipNeutralText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+  statusChipText: { fontFamily: FONT_MEDIUM, fontSize: 11 },
+
+  footBand: {
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+  },
+  footIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfacePill,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  footTitle: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 16,
+    color: COLORS.ink,
+  },
+  footSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: COLORS.muted,
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  /* ------------------------------------------------------------------ */
+  /* IMPORTANT PDFS TAB STYLING (Vogue Editorial Aesthetic)             */
+  /* ------------------------------------------------------------------ */
+  pdfArchiveContainer: {
+    flex: 1,
+    paddingHorizontal: 18,
+  },
+  pdfHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  vogueHeading: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 27,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    color: COLORS.ink,
+  },
+  pdfHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  adminActiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.successSoft,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 9999,
+  },
+  adminActiveText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11,
+    color: COLORS.success,
+  },
+  adminLockBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addPdfBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 9999,
+  },
+  addPdfBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 12,
+    color: COLORS.onDark,
+    marginLeft: 2,
+  },
+
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 10 : 6,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: FONT_REGULAR,
+    fontSize: 13,
+    color: COLORS.ink,
+    paddingVertical: 4,
+  },
+
+  filterPillsRow: {
+    marginBottom: 14,
+  },
+  filterPillsScroll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  filterPillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterPillText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  filterPillTextActive: {
+    color: COLORS.onDark,
+  },
+
+  emptyPdfState: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    padding: 36,
+    marginTop: 20,
+  },
+  emptyPdfTitle: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 20,
+    color: COLORS.ink,
+  },
+  emptyPdfSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 12.5,
+    color: COLORS.muted,
+    textAlign: "center",
+    marginTop: 4,
+  },
+
+  pdfCard: {
+    backgroundColor: COLORS.surfaceCard,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+  },
+  pdfCardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 6,
+  },
+  yearTag: {
+    backgroundColor: "rgba(37, 99, 235, 0.08)",
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  yearTagText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 10.5,
+    color: "#2563EB",
+  },
+  regTag: {
+    backgroundColor: COLORS.surfacePill,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  regTagText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 10.5,
+    color: COLORS.muted,
+  },
+  pdfSubjectText: {
+    flex: 1,
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11.5,
+    color: COLORS.body,
+    marginLeft: 2,
+  },
+  pdfCardTitle: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 15,
+    color: COLORS.ink,
+    lineHeight: 21,
+    marginBottom: 10,
+  },
+  pdfCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairlineSoft,
+    paddingTop: 10,
+  },
+  pdfMetaInfo: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11.5,
+    color: COLORS.muted,
+  },
+  pdfCardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  openPdfBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  openPdfBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11.5,
+    color: COLORS.onDark,
+  },
+  deletePdfBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: COLORS.errorSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Non-intrusive Ad Banner Container */
+  adBanner: {
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingTop: 4,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairlineSoft,
+  },
+
+  /* Bottom Navigation Bar */
+  navBar: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surfaceCard,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairline,
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === "android" ? 12 : 24,
+    paddingHorizontal: 20,
+    elevation: 8,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -2 },
+  },
+  navTab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  navTabActive: {},
+  navLabel: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+  navLabelActive: {
+    color: COLORS.ink,
+  },
+
+  /* Modal */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: COLORS.surfaceCard,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 28,
+    maxHeight: "80%",
+    elevation: 10,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(15, 23, 42, 0.15)",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairlineSoft,
+    marginBottom: 6,
+  },
+  modalTitle: {
+    fontFamily: FONT_VOGUE,
+    fontSize: 22,
+    letterSpacing: -0.3,
+    color: COLORS.ink,
+    lineHeight: 26,
+  },
+  modalSub: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+  logRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.hairlineSoft,
+  },
+  logLeft: { flexDirection: "row", alignItems: "center" },
+  logIndicatorDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  logDate: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 13,
+    color: COLORS.ink,
+  },
+  logTime: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11,
+    color: COLORS.mutedSoft,
+    marginTop: 2,
+  },
+  logBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 9999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  logBadgePresent: { backgroundColor: COLORS.successSoft },
+  logBadgeAbsent: { backgroundColor: COLORS.errorSoft },
+  logBadgeText: { fontFamily: FONT_MEDIUM, fontSize: 11 },
+  emptyLogWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 36,
+  },
+  emptyLogText: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 13,
+    color: COLORS.mutedSoft,
+    textAlign: "center",
+  },
+
+  /* Admin PIN & Form Modal Styles */
+  pinInput: {
     backgroundColor: COLORS.canvas,
     borderWidth: 1,
     borderColor: COLORS.hairline,
     borderRadius: 12,
-    padding: 24,
+    paddingVertical: 14,
+    textAlign: "center",
+    fontFamily: FONT_BOLD,
+    fontSize: 24,
+    letterSpacing: 10,
+    color: COLORS.ink,
+  },
+  pinInputError: {
+    borderColor: COLORS.error,
+  },
+  pinErrorText: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11.5,
+    color: COLORS.error,
+    textAlign: "center",
+    marginTop: 6,
+  },
+  pinHintText: {
+    fontFamily: FONT_REGULAR,
+    fontSize: 11.5,
+    color: COLORS.muted,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  adminSubmitBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
   },
-  errorIcon: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.error, color: COLORS.onDark,
-    fontSize: 20, fontWeight: "700", textAlign: "center", lineHeight: 34, overflow: "hidden",
+  adminSubmitBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 14,
+    color: COLORS.onDark,
   },
-  errorTitle: { fontFamily: FONT_BOLD, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, marginTop: 12, textAlign: "center" },
-  errorBody: { fontFamily: FONT_REGULAR, fontSize: 13, lineHeight: 19, color: COLORS.muted, marginTop: 8, textAlign: "center" },
-  errorBtn: { backgroundColor: COLORS.error, borderRadius: 8, paddingVertical: 12, alignSelf: "stretch", alignItems: "center", marginTop: 16 },
-  errorBtnText: { fontFamily: FONT_MEDIUM, color: COLORS.onDark, fontSize: 14 },
-  closeIcon: {
-    width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: COLORS.hairline,
-    backgroundColor: COLORS.canvas, alignItems: "center", justifyContent: "center",
+
+  formLabel: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 12,
+    color: COLORS.body,
+    marginBottom: 6,
+    marginTop: 10,
   },
-  closeIconText: { fontSize: 13, color: COLORS.body, fontWeight: "600" },
-
-  /* Dashboard */
-  dashboardContainer: { flex: 1, paddingHorizontal: 20 },
-  sigRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, marginBottom: 4 },
-  wordmark: { flexDirection: "row", alignItems: "center" },
-  wordmarkText: { fontFamily: FONT_BOLD, fontStyle: "italic", fontSize: 23, letterSpacing: -0.4, color: COLORS.ink, marginLeft: 8 },
-  wordmarkRole: { fontFamily: FONT_MEDIUM, fontSize: 10, letterSpacing: 1.4, color: COLORS.mutedSoft, marginLeft: 7, marginTop: 4 },
-  iconBtn: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.canvas,
-    borderWidth: 1, borderColor: COLORS.hairline, alignItems: "center", justifyContent: "center",
+  formInput: {
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 11 : 8,
+    fontFamily: FONT_REGULAR,
+    fontSize: 13,
+    color: COLORS.ink,
   },
-  iconBtnText: { fontSize: 15, color: COLORS.body, fontWeight: "600" },
-
-  profileCard: { backgroundColor: COLORS.surfaceDark, borderRadius: 12, padding: 18, marginBottom: 12 },
-  profileName: { fontFamily: FONT_SEMIBOLD, fontSize: 24, letterSpacing: -0.5, color: COLORS.onDark },
-  profileMetaRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.live, marginRight: 7 },
-  profileMeta: { fontFamily: FONT_REGULAR, fontSize: 12.5, color: COLORS.onDarkSoft },
-
-  overallCard: { backgroundColor: COLORS.surfaceCard, borderRadius: 12, padding: 20, marginBottom: 12 },
-  overallTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  eyebrowSm: { fontSize: 10.5, fontWeight: "500", letterSpacing: 1.5, color: COLORS.muted },
-  badgePill: { backgroundColor: COLORS.creamStrong, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 4 },
-  badgePillText: { fontFamily: FONT_MEDIUM, fontSize: 11, color: COLORS.ink },
-  bigPct: { fontFamily: FONT_BOLD, fontSize: 52, letterSpacing: -1.5, color: COLORS.ink, lineHeight: 56, marginVertical: 4 },
-  bigPctSign: { fontFamily: FONT_MEDIUM, fontSize: 24, color: COLORS.muted },
-  miniStats: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COLORS.hairline, paddingTop: 12, marginTop: 8 },
-  miniStat: { flex: 1, alignItems: "center" },
-  miniStatNum: { fontFamily: FONT_SEMIBOLD, fontSize: 18, color: COLORS.body },
-  miniStatLabel: { fontFamily: FONT_MEDIUM, fontSize: 9.5, letterSpacing: 1.2, color: COLORS.muted, marginTop: 3 },
-  miniDivider: { width: 1, backgroundColor: COLORS.hairlineSoft },
-  skipRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: COLORS.hairline, marginTop: 12, paddingTop: 12 },
-  skipTitle: { fontFamily: FONT_MEDIUM, fontSize: 13, color: COLORS.body },
-  skipSub: { fontFamily: FONT_REGULAR, fontSize: 10.5, color: COLORS.muted, marginTop: 2 },
-
-  badgeCoral: { backgroundColor: COLORS.primary, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 5 },
-  badgeCoralText: { fontFamily: FONT_MEDIUM, fontSize: 11, letterSpacing: 0.4, color: COLORS.onDark },
-  badgeMute: { backgroundColor: COLORS.creamStrong },
-  badgeMuteText: { color: COLORS.muted },
-
-  listHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginVertical: 8, paddingHorizontal: 2 },
-  listCount: { fontSize: 12, color: COLORS.mutedSoft },
-
-  subjectCard: {
-    backgroundColor: COLORS.surfaceCard, borderWidth: 1, borderColor: COLORS.hairline,
-    borderRadius: 12, padding: 16, marginBottom: 10,
+  formRow2: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  subjectRow1: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  subjectName: { flex: 1, fontSize: 14.5, fontWeight: "500", color: COLORS.ink, lineHeight: 20, marginRight: 10 },
-  subjectPct: { fontFamily: FONT_BOLD, fontSize: 24, letterSpacing: -0.5, color: COLORS.ink },
-  subjectRow2: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
-  shortStats: { fontSize: 11.5, color: COLORS.muted },
-  shortStatsBold: { fontWeight: "600", color: COLORS.body },
-
-  adBanner: {
+  formYearRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  formYearBtn: {
+    flex: 1,
+    paddingVertical: 10,
     alignItems: "center",
-    backgroundColor: "transparent",
-    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
   },
-
-  footBand: { backgroundColor: COLORS.surfaceDark, borderRadius: 12, padding: 24, alignItems: "center", marginTop: 6, marginBottom: 8 },
-  footTitle: { fontFamily: FONT_SEMIBOLD, fontSize: 21, letterSpacing: -0.3, color: COLORS.onDark, marginTop: 10 },
-  footSub: { fontFamily: FONT_REGULAR, fontSize: 12.5, lineHeight: 19, color: COLORS.onDarkSoft, marginTop: 8, textAlign: "center" },
-  btnCoral: { backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 20, marginTop: 14, alignSelf: "stretch", alignItems: "center" },
-  btnCoralText: { fontFamily: FONT_MEDIUM, fontSize: 14, color: COLORS.onDark },
-  footCredit: { fontFamily: FONT_REGULAR, fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 14 },
-  footCreditName: { fontFamily: FONT_SEMIBOLD, fontStyle: "italic", fontSize: 13, color: COLORS.primary },
-
-  /* Modal */
-  modalBackdrop: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
-  modalSheet: {
-    backgroundColor: "#0F172A", borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 26, maxHeight: "78%",
+  formYearBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
-  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.creamStrong, alignSelf: "center", marginBottom: 14 },
-  modalHeader: { flexDirection: "row", alignItems: "flex-start", paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.hairlineSoft, marginBottom: 4 },
-  modalTitle: { fontFamily: FONT_SEMIBOLD, fontSize: 19, letterSpacing: -0.3, color: COLORS.ink, lineHeight: 24 },
-  modalSub: { fontFamily: FONT_REGULAR, fontSize: 12, color: COLORS.muted, marginTop: 4 },
-  logRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.hairlineSoft },
-  logDate: { fontFamily: FONT_MEDIUM, fontSize: 13, color: COLORS.ink },
-  logTime: { fontFamily: FONT_REGULAR, fontSize: 11.5, color: COLORS.mutedSoft, marginTop: 2 },
-  logBadge: { backgroundColor: COLORS.surfaceCard, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 4 },
-  logBadgeText: { fontFamily: FONT_MEDIUM, fontSize: 11 },
+  formYearBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  formYearBtnTextActive: {
+    color: COLORS.onDark,
+  },
+  resetPdfsLink: {
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  resetPdfsLinkText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 12,
+    color: COLORS.muted,
+    textDecorationLine: "underline",
+  },
 });

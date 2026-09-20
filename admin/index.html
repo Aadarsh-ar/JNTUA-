@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JNTUA Admin · Important PDFs Curator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --canvas: #F6F7F9;
+      --canvas-subtle: #EDEFF2;
+      --card: #FFFFFF;
+      --ink: #0F172A;
+      --body: #334155;
+      --muted: #64748B;
+      --hairline: rgba(15, 23, 42, 0.08);
+      --hairline-focus: rgba(15, 23, 42, 0.25);
+      --primary: #0F172A;
+      --accent: #2563EB;
+      --success: #059669;
+      --danger: #E11D48;
+      --font-vogue: 'Cormorant Garamond', Georgia, serif;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Outfit', sans-serif;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.03);
+      --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.07), 0 4px 8px rgba(15, 23, 42, 0.04);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--canvas);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.03) 0px, transparent 50%),
+                        radial-gradient(at 0% 100%, rgba(15, 23, 42, 0.03) 0px, transparent 50%);
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* Top Bar Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--hairline);
+      margin-bottom: 32px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .brand-title {
+      font-family: var(--font-vogue);
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--ink);
+    }
+
+    .brand-tag {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      background: var(--canvas-subtle);
+      border-radius: 6px;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-family: var(--font-ui);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #FFF;
+    }
+
+    .btn-primary:hover {
+      background: #1E293B;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary {
+      background: var(--card);
+      border-color: var(--hairline);
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover {
+      background: var(--canvas);
+      border-color: var(--hairline-focus);
+    }
+
+    /* Main Grid */
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card Panels */
+    .panel-card {
+      background: var(--card);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .panel-title {
+      font-family: var(--font-vogue);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .panel-desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: var(--body);
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      font-family: var(--font-ui);
+      font-size: 13.5px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--primary);
+      background: #FFF;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed var(--hairline-focus);
+      border-radius: 10px;
+      padding: 24px 16px;
+      text-align: center;
+      background: var(--canvas);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary);
+      background: #FFF;
+    }
+
+    .drop-icon {
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+
+    .drop-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--body);
+    }
+
+    .drop-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Year Filter Pills */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .filter-pill {
+      padding: 7px 14px;
+      background: var(--card);
+      border: 1px solid var(--hairline);
+      border-radius: 20px;
+      font-family: var(--font-display);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-pill:hover {
+      border-color: var(--hairline-focus);
+      color: var(--ink);
+    }
+
+    .filter-pill.active {
+      background: var(--primary);
+      color: #FFF;
+      border-color: var(--primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* PDF Archive List */
+    .pdf-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pdf-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pdf-card:hover {
+      border-color: rgba(15, 23, 42, 0.18);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .pdf-info {
+      flex: 1;
+      margin-right: 16px;
+    }
+
+    .pdf-meta-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .pdf-badge {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--canvas-subtle);
+      color: var(--body);
+    }
+
+    .pdf-badge-year {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+    }
+
+    .pdf-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.35;
+    }
+
+    .pdf-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .pdf-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .action-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--hairline);
+      background: var(--card);
+      color: var(--body);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-icon-btn:hover {
+      background: var(--canvas);
+      color: var(--ink);
+      border-color: var(--hairline-focus);
+    }
+
+    .action-icon-btn.delete:hover {
+      background: rgba(225, 29, 72, 0.08);
+      color: var(--danger);
+      border-color: rgba(225, 29, 72, 0.2);
+    }
+
+    /* Modal for JSON Sync */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: var(--card);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 580px;
+      padding: 24px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .code-area {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 12px;
+      background: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      margin: 14px 0;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand-wrap">
+        <h1 class="brand-title">JNTUA Archive</h1>
+        <span class="brand-tag">Admin Curator</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="exportBtn" onclick="openSyncModal()">
+          Export / Sync JSON
+        </button>
+        <button class="btn btn-secondary" onclick="resetDefaults()">
+          Reset Defaults
+        </button>
+        <a href="../index.html" class="btn btn-secondary">
+          Student Portal
+        </a>
+      </div>
+    </header>
+
+    <div class="admin-grid">
+      <!-- Left: Upload / Add Form -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2 class="panel-title">Add Important PDF</h2>
+          <p class="panel-desc">Upload or link essential academic materials for JNTUA students.</p>
+        </div>
+
+        <form id="pdfForm" onsubmit="handleFormSubmit(event)">
+          <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+            <div class="drop-icon">📄</div>
+            <div class="drop-text" id="dropLabel">Choose or drag a PDF document</div>
+            <div class="drop-hint">Local file will be read and file details captured</div>
+            <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="handleFileSelected(event)" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Target Year</label>
+              <select class="form-select" id="yearSelect" required>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Semester</label>
+              <input type="text" class="form-input" id="semInput" placeholder="e.g. 1-1, 2-2" required value="1-1" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Subject Name</label>
+            <input type="text" class="form-input" id="subjectInput" placeholder="e.g. Data Structures, Applied Physics" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Document Title</label>
+            <input type="text" class="form-input" id="titleInput" placeholder="e.g. Formula Handbook & Solved Q&A" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Regulation (Optional)</label>
+            <input type="text" class="form-input" id="regulationInput" placeholder="e.g. R23 / R20" value="R23/R20" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">PDF Link / URL</label>
+              <input type="url" class="form-input" id="urlInput" placeholder="https://example.com/file.pdf" required value="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">File Size</label>
+              <input type="text" class="form-input" id="sizeInput" placeholder="e.g. 2.4 MB" required value="2.4 MB" />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:8px;">
+            Add to Archive
+          </button>
+        </form>
+      </div>
+
+      <!-- Right: List & Filters -->
+      <div>
+        <div class="filter-bar">
+          <span style="font-size:12px; font-weight:600; color:var(--muted); margin-right:6px;">Filter:</span>
+          <button class="filter-pill active" onclick="setFilter(0, this)">All Years</button>
+          <button class="filter-pill" onclick="setFilter(1, this)">1st Year</button>
+          <button class="filter-pill" onclick="setFilter(2, this)">2nd Year</button>
+          <button class="filter-pill" onclick="setFilter(3, this)">3rd Year</button>
+          <button class="filter-pill" onclick="setFilter(4, this)">4th Year</button>
+        </div>
+
+        <div class="pdf-list" id="pdfListContainer">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for JSON Sync with Mobile App -->
+  <div class="modal-overlay" id="syncModal">
+    <div class="modal-content">
+      <h3 style="font-family:var(--font-vogue); font-size:22px;">Sync Important PDFs Data</h3>
+      <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">
+        Copy this JSON data into your mobile app or backend storage.
+      </p>
+      <textarea class="code-area" id="jsonArea" readonly></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn btn-secondary" onclick="closeSyncModal()">Close</button>
+        <button class="btn btn-primary" onclick="copyJson()">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "jntua_important_pdfs_archive";
+
+    const DEFAULT_PDFS = [
+      {
+        id: "pdf-y1-1",
+        year: 1,
+        semester: "1-1",
+        title: "Linear Algebra & Calculus Formula Handbook",
+        subject: "Mathematics - I",
+        regulation: "R23/R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "1.8 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y1-2",
+        year: 1,
+        semester: "1-2",
+        title: "Engineering Physics Complete Notes & Diagrams",
+        subject: "Applied Physics",
+        regulation: "R23/R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "3.2 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y2-1",
+        year: 2,
+        semester: "2-1",
+        title: "Data Structures & Algorithms Cheat Sheet & Solved Papers",
+        subject: "Data Structures",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "2.4 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y2-2",
+        year: 2,
+        semester: "2-2",
+        title: "Operating Systems Core Concepts & Previous 5 Years Q&A",
+        subject: "Operating Systems",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "4.1 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y3-1",
+        year: 3,
+        semester: "3-1",
+        title: "Computer Networks Protocols & Numerical Problems",
+        subject: "Computer Networks",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "2.9 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y3-2",
+        year: 3,
+        semester: "3-2",
+        title: "Machine Learning & AI Comprehensive Exam Notes",
+        subject: "Artificial Intelligence",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "5.0 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y4-1",
+        year: 4,
+        semester: "4-1",
+        title: "Cloud Computing Architectures & AWS Case Studies",
+        subject: "Cloud Computing",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "3.7 MB",
+        uploadedAt: "Sep 2026"
+      },
+      {
+        id: "pdf-y4-2",
+        year: 4,
+        semester: "4-2",
+        title: "Comprehensive Viva & Technical Interview Guide",
+        subject: "Major Project / Viva",
+        regulation: "R20",
+        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        fileSize: "2.1 MB",
+        uploadedAt: "Sep 2026"
+      }
+    ];
+
+    let pdfs = [];
+    let currentFilterYear = 0;
+
+    function init() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          pdfs = JSON.parse(stored);
+        } catch (e) {
+          pdfs = [...DEFAULT_PDFS];
+        }
+      } else {
+        pdfs = [...DEFAULT_PDFS];
+        save();
+      }
+      render();
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pdfs));
+    }
+
+    function render() {
+      const container = document.getElementById("pdfListContainer");
+      const filtered = currentFilterYear === 0 
+        ? pdfs 
+        : pdfs.filter(p => p.year === currentFilterYear);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:48px 20px; background:var(--card); border:1px solid var(--hairline); border-radius:var(--radius);">
+            <div style="font-size:32px; margin-bottom:8px;">📂</div>
+            <div style="font-weight:600; font-size:15px; color:var(--ink);">No PDFs in this category</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">Upload important PDFs for this year using the left panel.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => `
+        <div class="pdf-card">
+          <div class="pdf-info">
+            <div class="pdf-meta-row">
+              <span class="pdf-badge pdf-badge-year">Year ${p.year} · Sem ${p.semester}</span>
+              ${p.regulation ? `<span class="pdf-badge">${p.regulation}</span>` : ''}
+              <span class="pdf-badge" style="font-weight:500;">${p.subject}</span>
+            </div>
+            <div class="pdf-title">${escapeHtml(p.title)}</div>
+            <div class="pdf-sub">${p.fileSize} · Added ${p.uploadedAt}</div>
+          </div>
+          <div class="pdf-actions">
+            <a href="${escapeHtml(p.fileUrl)}" target="_blank" class="action-icon-btn" title="Open Link">
+              ↗
+            </a>
+            <button class="action-icon-btn delete" onclick="deletePdf('${p.id}')" title="Delete PDF">
+              ✕
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function setFilter(year, el) {
+      currentFilterYear = year;
+      document.querySelectorAll(".filter-pill").forEach(pill => pill.classList.remove("active"));
+      el.classList.add("active");
+      render();
+    }
+
+    function triggerFileInput() {
+      document.getElementById("fileInput").click();
+    }
+
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById("dropLabel").innerText = file.name;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      document.getElementById("sizeInput").value = `${sizeMb} MB`;
+      if (!document.getElementById("titleInput").value) {
+        document.getElementById("titleInput").value = file.name.replace(/\.pdf$/i, "");
+      }
+    }
+
+    function handleFormSubmit(event) {
+      event.preventDefault();
+      const year = parseInt(document.getElementById("yearSelect").value, 10);
+      const semester = document.getElementById("semInput").value.trim();
+      const subject = document.getElementById("subjectInput").value.trim();
+      const title = document.getElementById("titleInput").value.trim();
+      const regulation = document.getElementById("regulationInput").value.trim();
+      const fileUrl = document.getElementById("urlInput").value.trim();
+      const fileSize = document.getElementById("sizeInput").value.trim();
+
+      const newPdf = {
+        id: `pdf-${Date.now()}`,
+        year,
+        semester,
+        subject,
+        title,
+        regulation,
+        fileUrl,
+        fileSize,
+        uploadedAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })
+      };
+
+      pdfs.unshift(newPdf);
+      save();
+      render();
+      event.target.reset();
+      document.getElementById("dropLabel").innerText = "Choose or drag a PDF document";
+      alert("Important PDF successfully added to archive!");
+    }
+
+    function deletePdf(id) {
+      if (!confirm("Are you sure you want to delete this PDF from the archive?")) return;
+      pdfs = pdfs.filter(p => p.id !== id);
+      save();
+      render();
+    }
+
+    function resetDefaults() {
+      if (!confirm("Reset to default curated JNTUA PDFs?")) return;
+      pdfs = [...DEFAULT_PDFS];
+      save();
+      render();
+    }
+
+    function openSyncModal() {
+      document.getElementById("jsonArea").value = JSON.stringify(pdfs, null, 2);
+      document.getElementById("syncModal").style.display = "flex";
+    }
+
+    function closeSyncModal() {
+      document.getElementById("syncModal").style.display = "none";
+    }
+
+    function copyJson() {
+      const area = document.getElementById("jsonArea");
+      area.select();
+      navigator.clipboard.writeText(area.value);
+      alert("JSON copied to clipboard! You can paste it into the mobile app storage.");
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

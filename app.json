@@ -17,7 +17,7 @@
       "permissions": [
         "INTERNET"
       ],
-      "package": "com.chanikya501.JNTUAAttendance"
+      "package": "com.theadarsh15.JNTUAAttendance"
     },
     "plugins": [
       [
@@ -54,7 +54,8 @@
       ]
     ],
     "updates": {
-      "checkAutomatically": "NEVER"
+      "checkAutomatically": "NEVER",
+      "url": "https://u.expo.dev/995b4509-884e-4349-98a7-f6fdfc0fa8ab"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -63,7 +64,7 @@
       "reactCompiler": true
     },
     "ios": {
-      "bundleIdentifier": "com.chanikya501.JNTUAAttendance"
+      "bundleIdentifier": "com.theadarsh15.JNTUAAttendance"
     },
     "extra": {
       "eas": {

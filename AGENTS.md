@@ -51,7 +51,7 @@ Do not remove an actively used package. Before every release, audit `package.jso
 - **Architecture:** `arm64-v8a` only. Never add `armeabi-v7a`, `x86`, or `x86_64` unless the user explicitly changes this project requirement.
 - **Minification:** Enabled in release builds (`enableMinifyInReleaseBuilds: true`)
 - **Resource shrinking:** Enabled in release builds (`enableShrinkResourcesInReleaseBuilds: true`)
-- **Android package:** `com.chanikya501.JNTUAAttendance`
+- **Android package:** `com.theadarsh15.JNTUAAttendance`
 - **Permissions:** `INTERNET` (required for WebView portal access)
 - **Edge-to-edge:** Enabled (`edgeToEdgeEnabled: true`)
 - **Predictive back gesture:** Enabled (`predictiveBackGestureEnabled: true`)
