@@ -677,7 +677,7 @@
             <div class="pdf-sub">${p.fileSize} · Added ${p.uploadedAt}</div>
           </div>
           <div class="pdf-actions">
-            <a href="${escapeHtml(p.fileUrl)}" target="_blank" class="action-icon-btn" title="Open Link">
+            <a href="${escapeHtml(p.fileUrl)}" target="_blank" ${p.fileUrl.startsWith('data:') ? `download="${escapeHtml(p.fileName || p.title + '.pdf')}"` : ''} class="action-icon-btn" title="Open / Download Document">
               ↗
             </a>
             <button class="action-icon-btn delete" onclick="deletePdf('${p.id}')" title="Delete PDF">
@@ -699,15 +699,25 @@
       document.getElementById("fileInput").click();
     }
 
+    let selectedFileDataUrl = null;
+    let selectedFileName = null;
+
     function handleFileSelected(event) {
       const file = event.target.files[0];
       if (!file) return;
+      selectedFileName = file.name;
       document.getElementById("dropLabel").innerText = file.name;
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
       document.getElementById("sizeInput").value = `${sizeMb} MB`;
       if (!document.getElementById("titleInput").value) {
-        document.getElementById("titleInput").value = file.name.replace(/\.pdf$/i, "");
+        document.getElementById("titleInput").value = file.name.replace(/\.[^.]+$/, "");
       }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedFileDataUrl = e.target.result;
+        document.getElementById("urlInput").value = `stored://${file.name}`;
+      };
+      reader.readAsDataURL(file);
     }
 
     function handleFormSubmit(event) {
@@ -717,8 +727,14 @@
       const subject = document.getElementById("subjectInput").value.trim();
       const title = document.getElementById("titleInput").value.trim();
       const regulation = document.getElementById("regulationInput").value.trim();
-      const fileUrl = document.getElementById("urlInput").value.trim();
+      let fileUrl = document.getElementById("urlInput").value.trim();
       const fileSize = document.getElementById("sizeInput").value.trim();
+      let isLocal = false;
+
+      if (selectedFileDataUrl) {
+        fileUrl = selectedFileDataUrl;
+        isLocal = true;
+      }
 
       const newPdf = {
         id: `pdf-${Date.now()}`,
@@ -729,6 +745,8 @@
         regulation,
         fileUrl,
         fileSize,
+        fileName: selectedFileName || "Document.pdf",
+        isLocal,
         uploadedAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })
       };
 
@@ -736,6 +754,8 @@
       save();
       render();
       event.target.reset();
+      selectedFileDataUrl = null;
+      selectedFileName = null;
       document.getElementById("dropLabel").innerText = "Choose or drag a PDF document";
       alert("Important PDF successfully added to archive!");
     }

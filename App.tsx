@@ -25,12 +25,14 @@ import {
   ToastAndroid,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import type { GestureResponderEvent, StyleProp, TextStyle, TouchableOpacityProps, ViewStyle } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import * as SplashScreen from "expo-splash-screen";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { BannerAdWrapper } from "./utils/BannerAdWrapper";
 import { PopunderAdWrapper } from "./utils/PopunderAdWrapper";
 import {
@@ -52,10 +54,18 @@ import { useInterstitialAd } from "./utils/interstitialAd";
 import { useMobileAdsInit } from "./utils/adInit";
 import {
   ImportantPdfItem,
+  DocumentFileType,
   loadImportantPdfs,
   addImportantPdf,
   deleteImportantPdf,
   resetToDefaultPdfs,
+  storeLocalDocument,
+  detectFileType,
+  clearCorruptedPdfs,
+  readDocumentAsBase64,
+  buildPdfJsHtml,
+  buildImageHtml,
+  testPdfUploadAndStore,
 } from "./utils/pdfService";
 
 const JNTUA_ICON = require("./assets/images/icon.png");
@@ -418,6 +428,9 @@ export default function App() {
   const [pinError, setPinError] = useState(false);
   const [showAddPdfModal, setShowAddPdfModal] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<ImportantPdfItem | null>(null);
+  const [viewingHtml, setViewingHtml] = useState<string | null>(null);
+  const [isViewerLoading, setIsViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState<string | null>(null);
   const pdfWebViewRef = useRef<WebViewType | null>(null);
 
   // New PDF Form fields
@@ -431,6 +444,8 @@ export default function App() {
   // "file" = pick from device storage | "url" = paste a link
   const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
   const [pickedFileName, setPickedFileName] = useState<string | null>(null);
+  const [pickedFileUri, setPickedFileUri] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Load Important PDFs on mount
   useEffect(() => {
@@ -641,9 +656,69 @@ export default function App() {
   /* ------------------------------------------------------------------ */
   /*  PDF Actions                                                       */
   /* ------------------------------------------------------------------ */
-  const handleOpenPdf = useCallback((item: ImportantPdfItem) => {
+  const handleOpenPdf = useCallback(async (item: ImportantPdfItem) => {
     setViewingPdf(item);
+    setViewerError(null);
+    setIsViewerLoading(true);
+
+    try {
+      const isLocal =
+        item.isLocal ||
+        item.fileUrl.startsWith("file://") ||
+        item.fileUrl.startsWith("content://");
+      const fileType = item.fileType || detectFileType(item.fileName || item.fileUrl);
+
+      if (fileType === "image") {
+        if (isLocal) {
+          const b64 = await readDocumentAsBase64(item.fileUrl);
+          setViewingHtml(buildImageHtml(b64, true));
+        } else {
+          setViewingHtml(buildImageHtml(item.fileUrl, false));
+        }
+      } else if (fileType === "pdf" || fileType === "other") {
+        if (isLocal) {
+          // Read local PDF to Base64 and render with embedded PDF.js canvas
+          const b64 = await readDocumentAsBase64(item.fileUrl);
+          setViewingHtml(buildPdfJsHtml(b64, item.title));
+        } else {
+          setViewingHtml(null); // Load remote URL via WebView
+        }
+      } else {
+        if (isLocal) {
+          try {
+            const b64 = await readDocumentAsBase64(item.fileUrl);
+            setViewingHtml(buildPdfJsHtml(b64, item.title));
+          } catch {
+            setViewingHtml(null);
+          }
+        } else {
+          setViewingHtml(null);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not prepare document";
+      setViewerError(msg);
+    } finally {
+      setIsViewerLoading(false);
+    }
   }, []);
+
+  const handleOpenExternal = useCallback(async () => {
+    if (!viewingPdf) return;
+    try {
+      if (viewingPdf.fileUrl.startsWith("http")) {
+        await Linking.openURL(viewingPdf.fileUrl);
+      } else {
+        const contentUri = await FileSystem.getContentUriAsync(viewingPdf.fileUrl);
+        await Linking.openURL(contentUri);
+      }
+    } catch {
+      Alert.alert(
+        "Open Document",
+        "Could not launch an external viewer app for this file on your device."
+      );
+    }
+  }, [viewingPdf]);
 
   const handleVerifyPin = useCallback(() => {
     if (pinInput.trim() === ADMIN_PASSKEY) {
@@ -663,20 +738,20 @@ export default function App() {
         // Allow PDFs, Word docs, PowerPoints, images, and text files
         type: [
           "application/pdf",
+          "image/*",
           "application/msword",
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           "application/vnd.ms-powerpoint",
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-          "image/jpeg",
-          "image/png",
           "text/plain",
         ],
-        copyToCacheDirectory: false,
+        copyToCacheDirectory: true,
         multiple: false,
       });
       if (result.canceled) return;
       const asset = result.assets[0];
       if (!asset) return;
+      setPickedFileUri(asset.uri);
       setNewPdfUrl(asset.uri);
       setPickedFileName(asset.name);
       // Auto-fill title from filename (strip extension)
@@ -698,29 +773,76 @@ export default function App() {
       Alert.alert("Incomplete Details", "Please provide at least the Subject Name and Document Title.");
       return;
     }
-    if (!newPdfUrl.trim()) {
-      Alert.alert("No File Selected", uploadMode === "file" ? "Please pick a file from your device." : "Please paste a document URL.");
+    if (uploadMode === "file" && !pickedFileUri) {
+      Alert.alert("No File Picked", "Please select a document from your device first.");
       return;
     }
-    const updated = await addImportantPdf({
-      year: newPdfYear,
-      semester: newPdfSem.trim() || "1-1",
-      subject: newPdfSubject.trim(),
-      title: newPdfTitle.trim(),
-      regulation: newPdfRegulation.trim() || undefined,
-      fileUrl: newPdfUrl.trim(),
-      fileSize: newPdfSize.trim() || "—",
-    });
-    setPdfList(updated);
-    setShowAddPdfModal(false);
-    setNewPdfSubject("");
-    setNewPdfTitle("");
-    setNewPdfUrl("");
-    setNewPdfSize("");
-    setPickedFileName(null);
-    setUploadMode("file");
-    Alert.alert("Added Successfully", "Important PDF is now live in the student archive.");
-  }, [newPdfYear, newPdfSem, newPdfSubject, newPdfTitle, newPdfRegulation, newPdfUrl, newPdfSize, uploadMode]);
+    if (uploadMode === "url" && !newPdfUrl.trim()) {
+      Alert.alert("No Link Entered", "Please paste a document URL.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      let finalFileUrl = newPdfUrl.trim();
+      let finalFileSize = newPdfSize.trim() || "—";
+      let finalFileType: DocumentFileType = "pdf";
+      let finalFileName = pickedFileName ?? "Document";
+      let isLocal = false;
+
+      if (uploadMode === "file" && pickedFileUri) {
+        // Persist file permanently into local database folder
+        const stored = await storeLocalDocument(pickedFileUri, pickedFileName || "document.pdf");
+        finalFileUrl = stored.persistentUri;
+        finalFileSize = stored.fileSize;
+        finalFileType = stored.fileType;
+        finalFileName = stored.fileName;
+        isLocal = true;
+      } else {
+        finalFileType = detectFileType(finalFileUrl);
+      }
+
+      const updated = await addImportantPdf({
+        year: newPdfYear,
+        semester: newPdfSem.trim() || "1-1",
+        subject: newPdfSubject.trim(),
+        title: newPdfTitle.trim(),
+        regulation: newPdfRegulation.trim() || undefined,
+        fileUrl: finalFileUrl,
+        fileSize: finalFileSize,
+        fileType: finalFileType,
+        fileName: finalFileName,
+        isLocal,
+      });
+
+      setPdfList(updated);
+      setShowAddPdfModal(false);
+      setNewPdfSubject("");
+      setNewPdfTitle("");
+      setNewPdfUrl("");
+      setNewPdfSize("");
+      setPickedFileName(null);
+      setPickedFileUri(null);
+      setUploadMode("file");
+      Alert.alert("Stored Successfully", "Document is permanently saved to your database archive.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to store document";
+      Alert.alert("Storage Error", `Could not save document to database: ${msg}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [
+    newPdfSubject,
+    newPdfTitle,
+    uploadMode,
+    pickedFileUri,
+    newPdfUrl,
+    newPdfSize,
+    pickedFileName,
+    newPdfYear,
+    newPdfSem,
+    newPdfRegulation,
+  ]);
 
   const handleDeletePdf = useCallback(async (id: string) => {
     Alert.alert(
@@ -751,6 +873,36 @@ export default function App() {
           onPress: async () => {
             const updated = await resetToDefaultPdfs();
             setPdfList(updated);
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const handleRunStorageTest = useCallback(async () => {
+    Alert.alert("Testing Document Database", "Running end-to-end PDF upload & storage test…");
+    const result = await testPdfUploadAndStore();
+    if (result.success) {
+      const items = await loadImportantPdfs();
+      setPdfList(items);
+      Alert.alert("Test Passed! ✅", result.message);
+    } else {
+      Alert.alert("Test Failed ❌", result.message);
+    }
+  }, []);
+
+  const handleClearCorrupted = useCallback(async () => {
+    Alert.alert(
+      "Clean Archive",
+      "Remove any documents whose local files are missing or corrupted?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clean Up",
+          onPress: async () => {
+            const updated = await clearCorruptedPdfs();
+            setPdfList(updated);
+            Alert.alert("Cleaned", "Removed broken entries from document database.");
           },
         },
       ]
@@ -1156,6 +1308,12 @@ export default function App() {
                       <Text style={styles.regTagText}>{item.regulation}</Text>
                     </View>
                   )}
+                  {item.isLocal && (
+                    <View style={styles.localTag}>
+                      <Ionicons name="shield-checkmark" size={10} color="#059669" style={{ marginRight: 3 }} />
+                      <Text style={styles.localTagText}>STORED</Text>
+                    </View>
+                  )}
                   <Text style={styles.pdfSubjectText} numberOfLines={1}>{item.subject}</Text>
                 </View>
 
@@ -1522,9 +1680,33 @@ export default function App() {
                 onChangeText={setNewPdfTitle}
               />
 
-              <BouncyButton style={[styles.adminSubmitBtn, { marginTop: 20 }]} onPress={handleCreatePdf}>
-                <Text style={styles.adminSubmitBtnText}>Publish to Archive</Text>
+              <BouncyButton
+                style={[styles.adminSubmitBtn, { marginTop: 20 }]}
+                onPress={handleCreatePdf}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <ActivityIndicator size="small" color={COLORS.onDark} />
+                    <Text style={styles.adminSubmitBtnText}>Storing into Database…</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.adminSubmitBtnText}>Publish to Archive</Text>
+                )}
               </BouncyButton>
+
+              {/* Maintenance & Test Tools */}
+              <View style={styles.archiveAdminTools}>
+                <TouchableOpacity style={styles.adminToolBtn} onPress={handleRunStorageTest}>
+                  <Ionicons name="flash-outline" size={14} color={COLORS.ink} />
+                  <Text style={styles.adminToolBtnText}>Test PDF Upload & Store</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.adminToolBtn} onPress={handleClearCorrupted}>
+                  <Ionicons name="trash-bin-outline" size={14} color={COLORS.body} />
+                  <Text style={styles.adminToolBtnText}>Clean Broken Entries</Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity style={styles.resetPdfsLink} onPress={handleResetDefaults}>
                 <Text style={styles.resetPdfsLinkText}>Reset Archive to University Defaults</Text>
@@ -1535,13 +1717,17 @@ export default function App() {
       </Modal>
 
       {/* ============================================================== */}
-      {/* MODAL: IN-APP PDF VIEWER (VIEW ON APK - NO EXTERNAL DOWNLOAD)  */}
+      {/* MODAL: IN-APP DOCUMENT VIEWER (PDF.JS & OFFLINE DB VIEWER)     */}
       {/* ============================================================== */}
       <Modal
         visible={!!viewingPdf}
         animationType="slide"
         transparent={false}
-        onRequestClose={() => setViewingPdf(null)}
+        onRequestClose={() => {
+          setViewingPdf(null);
+          setViewingHtml(null);
+          setViewerError(null);
+        }}
       >
         <View style={styles.pdfViewerContainer}>
           <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceCard} />
@@ -1550,7 +1736,11 @@ export default function App() {
           <View style={styles.pdfViewerHeader}>
             <TouchableOpacity
               style={styles.pdfViewerBackBtn}
-              onPress={() => setViewingPdf(null)}
+              onPress={() => {
+                setViewingPdf(null);
+                setViewingHtml(null);
+                setViewerError(null);
+              }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="arrow-back" size={20} color={COLORS.ink} />
@@ -1561,65 +1751,128 @@ export default function App() {
                 {viewingPdf?.title ?? "Document Viewer"}
               </Text>
               <Text style={styles.pdfViewerSubtitle} numberOfLines={1}>
-                {viewingPdf?.subject} {viewingPdf?.regulation ? `• ${viewingPdf.regulation}` : ""}
+                {viewingPdf?.subject} {viewingPdf?.regulation ? `• ${viewingPdf.regulation}` : ""} {viewingPdf?.isLocal ? "• Local Storage" : ""}
               </Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.pdfViewerReloadBtn}
-              onPress={() => pdfWebViewRef.current?.reload()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="reload-outline" size={18} color={COLORS.ink} />
-            </TouchableOpacity>
+            <View style={styles.pdfViewerActions}>
+              <TouchableOpacity
+                style={styles.pdfViewerActionBtn}
+                onPress={handleOpenExternal}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Open in External App"
+              >
+                <Ionicons name="open-outline" size={18} color={COLORS.ink} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.pdfViewerActionBtn}
+                onPress={() => {
+                  if (viewingPdf) void handleOpenPdf(viewingPdf);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Reload Document"
+              >
+                <Ionicons name="reload-outline" size={18} color={COLORS.ink} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Embedded Document View */}
           {viewingPdf && (
             <View style={styles.pdfViewerBody}>
-              <WebView
-                ref={pdfWebViewRef}
-                style={styles.pdfViewerWebview}
-                source={{
-                  uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewingPdf.fileUrl)}`,
-                }}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                startInLoadingState={true}
-                scalesPageToFit={true}
-                setSupportMultipleWindows={false}
-                onShouldStartLoadWithRequest={(request) => {
-                  if (
-                    request.url.includes("docs.google.com") ||
-                    request.url.includes("google.com/gview") ||
-                    request.url === viewingPdf.fileUrl
-                  ) {
-                    return true;
-                  }
-                  return false;
-                }}
-                renderLoading={() => (
-                  <View style={styles.pdfViewerLoading}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.pdfViewerLoadingText}>Loading document in-app…</Text>
-                  </View>
-                )}
-                renderError={() => (
-                  <View style={styles.pdfViewerErrorWrap}>
-                    <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
-                    <Text style={styles.pdfViewerErrorTitle}>Unable to Display Document</Text>
-                    <Text style={styles.pdfViewerErrorSub}>
-                      Please ensure you have an active internet connection.
-                    </Text>
+              {isViewerLoading && (
+                <View style={styles.pdfViewerLoading}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.pdfViewerLoadingText}>Preparing document in-app…</Text>
+                </View>
+              )}
+
+              {viewerError ? (
+                <View style={styles.pdfViewerErrorWrap}>
+                  <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
+                  <Text style={styles.pdfViewerErrorTitle}>Could Not Open Document</Text>
+                  <Text style={styles.pdfViewerErrorSub}>{viewerError}</Text>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                     <TouchableOpacity
                       style={styles.pdfViewerRetryBtn}
-                      onPress={() => pdfWebViewRef.current?.reload()}
+                      onPress={() => {
+                        if (viewingPdf) void handleOpenPdf(viewingPdf);
+                      }}
                     >
                       <Text style={styles.pdfViewerRetryBtnText}>Retry</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.pdfViewerRetryBtn, { backgroundColor: COLORS.canvas, borderWidth: 1, borderColor: COLORS.hairline }]}
+                      onPress={handleOpenExternal}
+                    >
+                      <Text style={[styles.pdfViewerRetryBtnText, { color: COLORS.ink }]}>External Viewer</Text>
+                    </TouchableOpacity>
                   </View>
-                )}
-              />
+                </View>
+              ) : viewingHtml ? (
+                <WebView
+                  ref={pdfWebViewRef}
+                  style={styles.pdfViewerWebview}
+                  source={{ html: viewingHtml }}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  allowFileAccess={true}
+                  originWhitelist={["*"]}
+                  scalesPageToFit={true}
+                  startInLoadingState={true}
+                  renderLoading={() => (
+                    <View style={styles.pdfViewerLoading}>
+                      <ActivityIndicator size="large" color={COLORS.primary} />
+                      <Text style={styles.pdfViewerLoadingText}>Rendering document in-app…</Text>
+                    </View>
+                  )}
+                />
+              ) : (
+                <WebView
+                  ref={pdfWebViewRef}
+                  style={styles.pdfViewerWebview}
+                  source={{
+                    uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewingPdf.fileUrl)}`,
+                  }}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  startInLoadingState={true}
+                  scalesPageToFit={true}
+                  setSupportMultipleWindows={false}
+                  onShouldStartLoadWithRequest={(request) => {
+                    if (
+                      request.url.includes("docs.google.com") ||
+                      request.url.includes("google.com/gview") ||
+                      request.url === viewingPdf.fileUrl
+                    ) {
+                      return true;
+                    }
+                    return false;
+                  }}
+                  renderLoading={() => (
+                    <View style={styles.pdfViewerLoading}>
+                      <ActivityIndicator size="large" color={COLORS.primary} />
+                      <Text style={styles.pdfViewerLoadingText}>Loading document in-app…</Text>
+                    </View>
+                  )}
+                  renderError={() => (
+                    <View style={styles.pdfViewerErrorWrap}>
+                      <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
+                      <Text style={styles.pdfViewerErrorTitle}>Unable to Display Online Document</Text>
+                      <Text style={styles.pdfViewerErrorSub}>
+                        Google Docs preview could not load this online link. You can open it directly in your browser or document viewer app.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.pdfViewerRetryBtn}
+                        onPress={handleOpenExternal}
+                      >
+                        <Text style={styles.pdfViewerRetryBtnText}>Open with External App</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
+              )}
             </View>
           )}
         </View>
@@ -2705,13 +2958,51 @@ const styles = StyleSheet.create({
   },
   resetPdfsLink: {
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
   resetPdfsLinkText: {
     fontFamily: FONT_MEDIUM,
     fontSize: 12,
     color: COLORS.muted,
     textDecorationLine: "underline",
+  },
+  archiveAdminTools: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  adminToolBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+  },
+  adminToolBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11.5,
+    color: COLORS.body,
+  },
+  localTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+    marginRight: 6,
+  },
+  localTagText: {
+    fontFamily: FONT_BOLD,
+    fontSize: 9.5,
+    color: "#059669",
+    letterSpacing: 0.5,
   },
 
   /* Upload Mode Toggle */
@@ -2852,6 +3143,21 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     marginTop: 2,
   },
+  pdfViewerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pdfViewerActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   pdfViewerReloadBtn: {
     width: 36,
     height: 36,
@@ -2864,11 +3170,11 @@ const styles = StyleSheet.create({
   },
   pdfViewerBody: {
     flex: 1,
-    backgroundColor: "#525659",
+    backgroundColor: "#0F172A",
   },
   pdfViewerWebview: {
     flex: 1,
-    backgroundColor: "#525659",
+    backgroundColor: "#0F172A",
   },
   pdfViewerLoading: {
     ...StyleSheet.absoluteFillObject,
