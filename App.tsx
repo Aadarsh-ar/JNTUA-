@@ -97,21 +97,7 @@ const FONT_SEMIBOLD = "Outfit_600SemiBold";
 const FONT_BOLD = "Outfit_700Bold";
 const STALL_TIMEOUT_MS = 25000;
 
-/**
- * SHA-256 hash of the admin PIN (hex). The raw PIN is never stored in source.
- */
-const ADMIN_PIN_HASH =
-  "deac804f538e16aca7e1c52f76cdd428b827410d1f6f6b2843bc9cd5d93178fa";
-
-/** Hash a string with SHA-256 and return a lowercase hex digest. */
-async function hashPin(raw: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(raw);
-  const buffer = await globalThis.crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+const ADMIN_PASSKEY = "630536";
 
 const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
   Present: COLORS.success,
@@ -660,18 +646,15 @@ export default function App() {
   }, []);
 
   const handleVerifyPin = useCallback(() => {
-    void (async () => {
-      const digest = await hashPin(pinInput.trim());
-      if (digest === ADMIN_PIN_HASH) {
-        setIsAdminMode(true);
-        setShowPinModal(false);
-        setPinInput("");
-        setPinError(false);
-        Alert.alert("Admin Unlocked", "You can now add or remove Important PDFs for all years.");
-      } else {
-        setPinError(true);
-      }
-    })();
+    if (pinInput.trim() === ADMIN_PASSKEY) {
+      setIsAdminMode(true);
+      setShowPinModal(false);
+      setPinInput("");
+      setPinError(false);
+      Alert.alert("Admin Unlocked", "You can now add or remove Important PDFs for all years.");
+    } else {
+      setPinError(true);
+    }
   }, [pinInput]);
 
   const handlePickFile = useCallback(async () => {
