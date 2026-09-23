@@ -14,6 +14,7 @@ import {
   Animated,
   BackHandler,
   FlatList,
+  Image,
   Modal,
   Platform,
   ScrollView,
@@ -29,7 +30,9 @@ import type { GestureResponderEvent, StyleProp, TextStyle, TouchableOpacityProps
 import type { WebView as WebViewType } from "react-native-webview";
 import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import * as SplashScreen from "expo-splash-screen";
+import * as DocumentPicker from "expo-document-picker";
 import { BannerAdWrapper } from "./utils/BannerAdWrapper";
+import { PopunderAdWrapper } from "./utils/PopunderAdWrapper";
 import {
   autoSubmitFirstSemesterScript,
   parseDetailedAttendanceAndGoHomeScript,
@@ -54,6 +57,8 @@ import {
   deleteImportantPdf,
   resetToDefaultPdfs,
 } from "./utils/pdfService";
+
+const JNTUA_ICON = require("./assets/images/icon.png");
 
 /* ------------------------------------------------------------------ */
 /*  Minimal Luxury Light Gray ("Vogue" Editorial) Design System        */
@@ -91,6 +96,22 @@ const FONT_MEDIUM = "Outfit_500Medium";
 const FONT_SEMIBOLD = "Outfit_600SemiBold";
 const FONT_BOLD = "Outfit_700Bold";
 const STALL_TIMEOUT_MS = 25000;
+
+/**
+ * SHA-256 hash of the admin PIN (hex). The raw PIN is never stored in source.
+ */
+const ADMIN_PIN_HASH =
+  "deac804f538e16aca7e1c52f76cdd428b827410d1f6f6b2843bc9cd5d93178fa";
+
+/** Hash a string with SHA-256 and return a lowercase hex digest. */
+async function hashPin(raw: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(raw);
+  const buffer = await globalThis.crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 const STATUS_COLOR: Record<AttendanceRecord["status"], string> = {
   Present: COLORS.success,
@@ -395,8 +416,8 @@ export default function App() {
   const [adFailed, setAdFailed] = useState(false);
   const update = useUpdateManager();
   const { checkForUpdate } = update;
-  useAppOpenAd(state.isSplashDismissed);
-  const { tryShowInterstitial } = useInterstitialAd();
+  const { AdsterrRectModal } = useAppOpenAd(state.isSplashDismissed);
+  const { tryShowInterstitial, InterstitialModal } = useInterstitialAd();
 
   /* ------------------------------------------------------------------ */
   /*  Navigation & Important PDFs State                                 */
@@ -419,8 +440,11 @@ export default function App() {
   const [newPdfSubject, setNewPdfSubject] = useState("");
   const [newPdfTitle, setNewPdfTitle] = useState("");
   const [newPdfRegulation, setNewPdfRegulation] = useState("R23/R20");
-  const [newPdfUrl, setNewPdfUrl] = useState("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
-  const [newPdfSize, setNewPdfSize] = useState("2.4 MB");
+  const [newPdfUrl, setNewPdfUrl] = useState("");
+  const [newPdfSize, setNewPdfSize] = useState("");
+  // "file" = pick from device storage | "url" = paste a link
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+  const [pickedFileName, setPickedFileName] = useState<string | null>(null);
 
   // Load Important PDFs on mount
   useEffect(() => {
@@ -493,7 +517,7 @@ export default function App() {
         case "SCRAPING_COMPLETE": dispatch({ type: "SET_SCRAPING_FINISHED" }); break;
       }
     } catch (err) {
-      console.warn("WebView Message Error:", err);
+      if (__DEV__) console.warn("WebView Message Error:", err);
     }
   }, []);
 
@@ -636,20 +660,63 @@ export default function App() {
   }, []);
 
   const handleVerifyPin = useCallback(() => {
-    if (pinInput.trim() === "630536") {
-      setIsAdminMode(true);
-      setShowPinModal(false);
-      setPinInput("");
-      setPinError(false);
-      Alert.alert("Admin Unlocked", "You can now add or remove Important PDFs for all years.");
-    } else {
-      setPinError(true);
-    }
+    void (async () => {
+      const digest = await hashPin(pinInput.trim());
+      if (digest === ADMIN_PIN_HASH) {
+        setIsAdminMode(true);
+        setShowPinModal(false);
+        setPinInput("");
+        setPinError(false);
+        Alert.alert("Admin Unlocked", "You can now add or remove Important PDFs for all years.");
+      } else {
+        setPinError(true);
+      }
+    })();
   }, [pinInput]);
 
+  const handlePickFile = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        // Allow PDFs, Word docs, PowerPoints, images, and text files
+        type: [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-powerpoint",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          "image/jpeg",
+          "image/png",
+          "text/plain",
+        ],
+        copyToCacheDirectory: false,
+        multiple: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset) return;
+      setNewPdfUrl(asset.uri);
+      setPickedFileName(asset.name);
+      // Auto-fill title from filename (strip extension)
+      if (!newPdfTitle.trim()) {
+        setNewPdfTitle(asset.name.replace(/\.[^.]+$/, ""));
+      }
+      // Auto-fill size
+      if (asset.size != null) {
+        const mb = (asset.size / (1024 * 1024)).toFixed(1);
+        setNewPdfSize(`${mb} MB`);
+      }
+    } catch {
+      Alert.alert("Error", "Could not open file picker. Please try again.");
+    }
+  }, [newPdfTitle]);
+
   const handleCreatePdf = useCallback(async () => {
-    if (!newPdfSubject.trim() || !newPdfTitle.trim() || !newPdfUrl.trim()) {
-      Alert.alert("Incomplete Details", "Please provide Subject Name, Document Title, and PDF URL.");
+    if (!newPdfSubject.trim() || !newPdfTitle.trim()) {
+      Alert.alert("Incomplete Details", "Please provide at least the Subject Name and Document Title.");
+      return;
+    }
+    if (!newPdfUrl.trim()) {
+      Alert.alert("No File Selected", uploadMode === "file" ? "Please pick a file from your device." : "Please paste a document URL.");
       return;
     }
     const updated = await addImportantPdf({
@@ -659,14 +726,18 @@ export default function App() {
       title: newPdfTitle.trim(),
       regulation: newPdfRegulation.trim() || undefined,
       fileUrl: newPdfUrl.trim(),
-      fileSize: newPdfSize.trim() || "2.0 MB",
+      fileSize: newPdfSize.trim() || "—",
     });
     setPdfList(updated);
     setShowAddPdfModal(false);
     setNewPdfSubject("");
     setNewPdfTitle("");
+    setNewPdfUrl("");
+    setNewPdfSize("");
+    setPickedFileName(null);
+    setUploadMode("file");
     Alert.alert("Added Successfully", "Important PDF is now live in the student archive.");
-  }, [newPdfYear, newPdfSem, newPdfSubject, newPdfTitle, newPdfRegulation, newPdfUrl, newPdfSize]);
+  }, [newPdfYear, newPdfSem, newPdfSubject, newPdfTitle, newPdfRegulation, newPdfUrl, newPdfSize, uploadMode]);
 
   const handleDeletePdf = useCallback(async (id: string) => {
     Alert.alert(
@@ -746,13 +817,28 @@ export default function App() {
             }}
             onNavigationStateChange={handleNavigationStateChange}
             onMessage={handleMessage}
-            onError={(event) => console.warn("WebView error:", event.nativeEvent.description)}
+            onError={(event) => {
+              if (__DEV__) console.warn("WebView error:", event.nativeEvent.description);
+            }}
             onHttpError={(event) => {
               if (event.nativeEvent.statusCode === 502) dispatch({ type: "SET_GATEWAY_ERROR" });
             }}
             javaScriptEnabled
             domStorageEnabled
-            incognito={false}
+            thirdPartyCookiesEnabled={false}
+            geolocationEnabled={false}
+            allowsFullscreenVideo={false}
+            mediaPlaybackRequiresUserAction
+            setSupportMultipleWindows={false}
+            onShouldStartLoadWithRequest={(request) => {
+              // Only allow navigation within the JNTUA portal domain.
+              // Block all other external navigations to prevent clickjacking
+              // or redirect attacks.
+              const allowed = request.url.startsWith(
+                "https://jntuaceastudents.classattendance.in"
+              );
+              return allowed;
+            }}
           />
           {!isLoggedIn && hasPreviousResult && (
             <BouncyButton style={styles.prevBtn} onPress={handlePreviousAttendance} activeOpacity={0.88}>
@@ -842,9 +928,11 @@ export default function App() {
                   {studentInfo && (
                     <View style={styles.profileCard}>
                       <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>
-                          {studentInfo.name.trim().charAt(0).toUpperCase()}
-                        </Text>
+                        <Image
+                          source={JNTUA_ICON}
+                          style={styles.avatarImage}
+                          resizeMode="contain"
+                        />
                       </View>
                       <View style={styles.profileInfo}>
                         <Text style={styles.profileName} numberOfLines={1}>{studentInfo.name}</Text>
@@ -1305,12 +1393,12 @@ export default function App() {
             activeOpacity={1}
             onPress={() => setShowAddPdfModal(false)}
           />
-          <View style={[styles.modalSheet, { maxHeight: "88%" }]}>
+          <View style={[styles.modalSheet, { maxHeight: "92%" }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Add Important PDF</Text>
-                <Text style={styles.modalSub}>Curate academic notes for students.</Text>
+                <Text style={styles.modalTitle}>Upload Document</Text>
+                <Text style={styles.modalSub}>Add a resource to the student archive.</Text>
               </View>
               <TouchableOpacity style={styles.closeIcon} onPress={() => setShowAddPdfModal(false)}>
                 <Ionicons name="close" size={18} color={COLORS.body} />
@@ -1318,6 +1406,79 @@ export default function App() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 12 }}>
+
+              {/* ── Upload Mode Toggle ── */}
+              <View style={styles.uploadModeToggle}>
+                <TouchableOpacity
+                  style={[styles.uploadModeBtn, uploadMode === "file" && styles.uploadModeBtnActive]}
+                  onPress={() => { setUploadMode("file"); setNewPdfUrl(""); setPickedFileName(null); setNewPdfSize(""); }}
+                >
+                  <Ionicons name="document-attach-outline" size={15} color={uploadMode === "file" ? COLORS.onDark : COLORS.muted} />
+                  <Text style={[styles.uploadModeBtnText, uploadMode === "file" && styles.uploadModeBtnTextActive]}>
+                    Pick from Device
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.uploadModeBtn, uploadMode === "url" && styles.uploadModeBtnActive]}
+                  onPress={() => { setUploadMode("url"); setNewPdfUrl(""); setPickedFileName(null); setNewPdfSize(""); }}
+                >
+                  <Ionicons name="link-outline" size={15} color={uploadMode === "url" ? COLORS.onDark : COLORS.muted} />
+                  <Text style={[styles.uploadModeBtnText, uploadMode === "url" && styles.uploadModeBtnTextActive]}>
+                    Paste Link
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ── File Picker Mode ── */}
+              {uploadMode === "file" && (
+                <TouchableOpacity style={styles.fileDrop} onPress={handlePickFile} activeOpacity={0.75}>
+                  {pickedFileName ? (
+                    <>
+                      <Ionicons name="document-text" size={28} color={COLORS.primary} />
+                      <Text style={styles.fileDropName} numberOfLines={2}>{pickedFileName}</Text>
+                      {newPdfSize ? <Text style={styles.fileDropMeta}>{newPdfSize} · Tap to change</Text> : null}
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={32} color={COLORS.muted} />
+                      <Text style={styles.fileDropLabel}>Tap to pick a file</Text>
+                      <Text style={styles.fileDropHint}>PDF · DOCX · PPTX · Images · TXT</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* ── URL Paste Mode ── */}
+              {uploadMode === "url" && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={styles.formLabel}>Document Link / URL</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="https://drive.google.com/... or any public URL"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    value={newPdfUrl}
+                    onChangeText={setNewPdfUrl}
+                  />
+                  <Text style={styles.formLabel}>Estimated File Size</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 2.4 MB (optional)"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    value={newPdfSize}
+                    onChangeText={setNewPdfSize}
+                  />
+                </View>
+              )}
+
+              {/* ── Divider ── */}
+              <View style={styles.uploadDivider}>
+                <View style={styles.uploadDividerLine} />
+                <Text style={styles.uploadDividerText}>DOCUMENT INFO</Text>
+                <View style={styles.uploadDividerLine} />
+              </View>
+
               {/* Year Select */}
               <Text style={styles.formLabel}>Target Year</Text>
               <View style={styles.formYearRow}>
@@ -1376,28 +1537,6 @@ export default function App() {
                 placeholderTextColor={COLORS.mutedSoft}
                 value={newPdfTitle}
                 onChangeText={setNewPdfTitle}
-              />
-
-              {/* PDF URL */}
-              <Text style={styles.formLabel}>Document Link / URL</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="https://..."
-                placeholderTextColor={COLORS.mutedSoft}
-                autoCapitalize="none"
-                keyboardType="url"
-                value={newPdfUrl}
-                onChangeText={setNewPdfUrl}
-              />
-
-              {/* File Size */}
-              <Text style={styles.formLabel}>Estimated File Size</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. 2.4 MB"
-                placeholderTextColor={COLORS.mutedSoft}
-                value={newPdfSize}
-                onChangeText={setNewPdfSize}
               />
 
               <BouncyButton style={[styles.adminSubmitBtn, { marginTop: 20 }]} onPress={handleCreatePdf}>
@@ -1502,6 +1641,15 @@ export default function App() {
           )}
         </View>
       </Modal>
+
+      {/* ============================================================== */}
+      {/* ADSTERRA ADS: APP-OPEN RECTANGLE & INTERSTITIAL MODALS         */}
+      {/* ============================================================== */}
+      {AdsterrRectModal}
+      {InterstitialModal}
+
+      {/* Adsterra Popunder — fires once on mount, invisible             */}
+      <PopunderAdWrapper />
     </LinearGradient>
   );
 }
@@ -1746,17 +1894,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surfacePill,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
     borderWidth: 1,
     borderColor: COLORS.hairline,
+    overflow: "hidden",
   },
-  avatarText: {
-    fontFamily: FONT_BOLD,
-    fontSize: 17,
-    color: COLORS.primary,
+  avatarImage: {
+    width: 32,
+    height: 32,
   },
   profileInfo: { flex: 1 },
   profileName: {
@@ -2581,6 +2729,99 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     textDecorationLine: "underline",
+  },
+
+  /* Upload Mode Toggle */
+  uploadModeToggle: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surfacePill,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  uploadModeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+  },
+  uploadModeBtnActive: {
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  uploadModeBtnText: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 13,
+    color: COLORS.muted,
+  },
+  uploadModeBtnTextActive: {
+    color: COLORS.onDark,
+    fontFamily: FONT_SEMIBOLD,
+  },
+
+  /* File Drop Zone */
+  fileDrop: {
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: COLORS.hairline,
+    borderRadius: 14,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.canvas,
+    marginBottom: 16,
+    gap: 8,
+  },
+  fileDropLabel: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 14,
+    color: COLORS.body,
+  },
+  fileDropHint: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11.5,
+    color: COLORS.muted,
+    letterSpacing: 0.4,
+  },
+  fileDropName: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 13.5,
+    color: COLORS.ink,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  fileDropMeta: {
+    fontFamily: FONT_MEDIUM,
+    fontSize: 11.5,
+    color: COLORS.muted,
+  },
+
+  /* Upload Divider */
+  uploadDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  uploadDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.hairline,
+  },
+  uploadDividerText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 10,
+    color: COLORS.muted,
+    letterSpacing: 1.2,
   },
 
   /* In-App PDF Viewer */

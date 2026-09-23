@@ -4,13 +4,14 @@
     "slug": "JNTUA-Attendance",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/splash-screen.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "jntuaattendance",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
@@ -44,14 +45,7 @@
           }
         }
       ],
-      "expo-font",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-5291524891342004~2212450506",
-          "iosAppId": "ca-app-pub-5291524891342004~2212450506"
-        }
-      ]
+      "expo-font"
     ],
     "updates": {
       "checkAutomatically": "NEVER",

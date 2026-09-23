@@ -3,6 +3,10 @@
  */
 export function useInterstitialAd(): {
   tryShowInterstitial: () => void;
+  InterstitialModal: null;
 } {
-  return { tryShowInterstitial: () => {} };
+  return {
+    tryShowInterstitial: () => {},
+    InterstitialModal: null,
+  };
 }

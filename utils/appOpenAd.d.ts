@@ -1,1 +1,5 @@
-export declare function useAppOpenAd(isReady: boolean): void;
+import React from "react";
+
+export declare function useAppOpenAd(isSplashDismissed: boolean): {
+  AdsterrRectModal: React.ReactNode;
+};

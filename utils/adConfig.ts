@@ -1,33 +1,34 @@
 /**
- * Google AdMob Configuration
+ * Adsterra Ad Configuration
  *
- * App ID: ca-app-pub-5291524891342004~2212450506
- *
- * Note: In __DEV__ mode, official Google AdMob Test Unit IDs are used automatically
- * so you can test ads safely without risking AdMob policy violations.
+ * Three ad units are in use:
+ *  1. Banner (320×50)  – rendered inline via WebView
+ *  2. Rectangle (300×250) – shown in a Modal WebView as interstitial / app-open replacement
+ *  3. Popunder – injected once on mount via a hidden 0×0 WebView
  */
 
-// Official Google AdMob Test Ad Unit IDs
-const TEST_BANNER_ID = "ca-app-pub-3940256099942544/6300978111";
-const TEST_APP_OPEN_ID = "ca-app-pub-3940256099942544/3419835294";
-const TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712";
-
 export const AD_CONFIG = {
-  /** AdMob App ID */
-  appId: "ca-app-pub-5291524891342004~2212450506",
+  /**
+   * Adsterra banner 320×50
+   * Network: highrevenueformat.com
+   */
+  bannerKey: "2d3b586effc4cda50cc2d3bbe45dee75",
+  bannerWidth: 320,
+  bannerHeight: 50,
 
-  /** Banner Ad Unit ID */
-  bannerAdUnitId: __DEV__
-    ? TEST_BANNER_ID
-    : "ca-app-pub-5291524891342004/9099820306",
+  /**
+   * Adsterra rectangle 300×250  (replaces interstitial / app-open)
+   * Network: highrevenueformat.com
+   */
+  rectKey: "465e3b58d50267ed8b0586ac8b036b3d",
+  rectWidth: 300,
+  rectHeight: 250,
 
-  /** App Open Ad Unit ID */
-  appOpenAdUnitId: __DEV__
-    ? TEST_APP_OPEN_ID
-    : "ca-app-pub-5291524891342004/7730898318",
-
-  /** Interstitial Ad Unit ID */
-  interstitialAdUnitId: __DEV__
-    ? TEST_INTERSTITIAL_ID
-    : "ca-app-pub-5291524891342004/7157017398",
-};
+  /**
+   * Adsterra popunder
+   * Network: profitableratecpmnetwork.com
+   */
+  popunderSrc:
+    "https://pl31461197.profitableratecpmnetwork.com/6e3aed2cc5194742709ca97d928003f4/invoke.js",
+  popunderContainerId: "container-6e3aed2cc5194742709ca97d928003f4",
+} as const;

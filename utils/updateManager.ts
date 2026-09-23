@@ -95,7 +95,7 @@ export function useUpdateManager(): UpdateManager {
         setManualStatus("upToDate");
       }
     } catch (err) {
-      console.warn("Update check failed:", err);
+      if (__DEV__) console.warn("Update check failed:", err);
       setManualStatus("error");
     } finally {
       clearTimeout(timeoutId);
