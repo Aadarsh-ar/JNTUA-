@@ -734,6 +734,13 @@
       if (selectedFileDataUrl) {
         fileUrl = selectedFileDataUrl;
         isLocal = true;
+      } else if (fileUrl) {
+        const driveMatch = fileUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (driveMatch && driveMatch[1]) {
+          fileUrl = `https://drive.google.com/file/d/${driveMatch[1]}/view`;
+        } else if (fileUrl.includes("dropbox.com") && fileUrl.includes("dl=0")) {
+          fileUrl = fileUrl.replace("dl=0", "raw=1");
+        }
       }
 
       const newPdf = {

@@ -174,9 +174,68 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export function extractGoogleDriveFileId(url: string): string | null {
+  if (!url) return null;
+  const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch?.[1]) return fileMatch[1];
+  const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch?.[1]) return idMatch[1];
+  const openMatch = url.match(/\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (openMatch?.[1]) return openMatch[1];
+  const docsMatch = url.match(/\/(?:document|presentation|spreadsheets)\/d\/([a-zA-Z0-9_-]+)/);
+  if (docsMatch?.[1]) return docsMatch[1];
+  return null;
+}
+
+export function isGoogleDriveUrl(url: string): boolean {
+  if (!url) return false;
+  return /drive\.google\.com|docs\.google\.com/.test(url);
+}
+
+export function getGoogleDrivePreviewUrl(fileId: string): string {
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+export function getGoogleDriveDownloadUrl(fileId: string): string {
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+}
+
+export function normalizeDocumentUrl(rawUrl: string): {
+  url: string;
+  previewUrl?: string;
+  downloadUrl?: string;
+  isDrive: boolean;
+} {
+  const trimmed = rawUrl.trim();
+  const driveId = extractGoogleDriveFileId(trimmed);
+  if (driveId) {
+    return {
+      url: trimmed,
+      previewUrl: getGoogleDrivePreviewUrl(driveId),
+      downloadUrl: getGoogleDriveDownloadUrl(driveId),
+      isDrive: true,
+    };
+  }
+  if (trimmed.includes("dropbox.com") && trimmed.includes("dl=0")) {
+    const dlUrl = trimmed.replace("dl=0", "raw=1");
+    return {
+      url: trimmed,
+      previewUrl: dlUrl,
+      downloadUrl: dlUrl,
+      isDrive: false,
+    };
+  }
+  return {
+    url: trimmed,
+    previewUrl: trimmed,
+    downloadUrl: trimmed,
+    isDrive: false,
+  };
+}
+
 export function detectFileType(fileNameOrUri: string): DocumentFileType {
   const clean = fileNameOrUri.toLowerCase().split("?")[0] ?? "";
-  if (clean.endsWith(".pdf")) return "pdf";
+  if (clean.endsWith(".pdf") || fileNameOrUri.toLowerCase().includes(".pdf")) return "pdf";
   if (
     clean.endsWith(".png") ||
     clean.endsWith(".jpg") ||
@@ -194,7 +253,30 @@ export function detectFileType(fileNameOrUri: string): DocumentFileType {
     return "doc";
   }
   if (clean.endsWith(".txt")) return "text";
+  if (isGoogleDriveUrl(fileNameOrUri)) return "pdf";
   return "other";
+}
+
+export async function fetchRemoteDocumentToCache(
+  downloadUrl: string,
+  suggestedFileName = "temp_doc.pdf"
+): Promise<string> {
+  const cacheDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+  if (!cacheDir) throw new Error("No cache storage directory available");
+  const ext = suggestedFileName.includes(".")
+    ? suggestedFileName.slice(suggestedFileName.lastIndexOf("."))
+    : ".pdf";
+  const safeBase = suggestedFileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .substring(0, 24);
+  const targetPath = `${cacheDir}cache_${Date.now()}_${safeBase}${ext}`;
+
+  const result = await FileSystem.downloadAsync(downloadUrl, targetPath);
+  if (result.status >= 200 && result.status < 300) {
+    return result.uri;
+  }
+  throw new Error(`Download failed with status ${result.status}`);
 }
 
 export async function storeLocalDocument(

@@ -66,6 +66,11 @@ import {
   buildPdfJsHtml,
   buildImageHtml,
   testPdfUploadAndStore,
+  extractGoogleDriveFileId,
+  getGoogleDrivePreviewUrl,
+  getGoogleDriveDownloadUrl,
+  normalizeDocumentUrl,
+  fetchRemoteDocumentToCache,
 } from "./utils/pdfService";
 
 const JNTUA_ICON = require("./assets/images/icon.png");
@@ -675,20 +680,38 @@ export default function App() {
         } else {
           setViewingHtml(buildImageHtml(item.fileUrl, false));
         }
-      } else if (fileType === "pdf" || fileType === "other") {
-        if (isLocal) {
-          // Read local PDF to Base64 and render with embedded PDF.js canvas
+      } else if (isLocal) {
+        // Local PDF or document: Read to Base64 and render in-app with PDF.js
+        try {
           const b64 = await readDocumentAsBase64(item.fileUrl);
           setViewingHtml(buildPdfJsHtml(b64, item.title));
-        } else {
-          setViewingHtml(null); // Load remote URL via WebView
+        } catch {
+          setViewerError(
+            "Could not read local document. You can open it using an external viewer app."
+          );
         }
       } else {
-        if (isLocal) {
+        // Remote document: Google Drive, direct PDF link, etc.
+        const driveId = extractGoogleDriveFileId(item.fileUrl);
+        if (driveId) {
+          // Attempt downloading direct export to cache for smooth in-app PDF.js rendering
           try {
-            const b64 = await readDocumentAsBase64(item.fileUrl);
+            const dlUrl = getGoogleDriveDownloadUrl(driveId);
+            const cachedUri = await fetchRemoteDocumentToCache(dlUrl, item.fileName || `${item.title}.pdf`);
+            const b64 = await readDocumentAsBase64(cachedUri);
             setViewingHtml(buildPdfJsHtml(b64, item.title));
           } catch {
+            // If direct download fails (e.g. view-only or auth needed), use Google Drive native embed preview
+            setViewingHtml(null);
+          }
+        } else if (item.fileUrl.startsWith("http")) {
+          // Direct web link: attempt to download and render in PDF.js
+          try {
+            const cachedUri = await fetchRemoteDocumentToCache(item.fileUrl, item.fileName || `${item.title}.pdf`);
+            const b64 = await readDocumentAsBase64(cachedUri);
+            setViewingHtml(buildPdfJsHtml(b64, item.title));
+          } catch {
+            // Fallback to WebView
             setViewingHtml(null);
           }
         } else {
@@ -707,7 +730,11 @@ export default function App() {
     if (!viewingPdf) return;
     try {
       if (viewingPdf.fileUrl.startsWith("http")) {
-        await Linking.openURL(viewingPdf.fileUrl);
+        const driveId = extractGoogleDriveFileId(viewingPdf.fileUrl);
+        const externalUrl = driveId
+          ? `https://drive.google.com/file/d/${driveId}/view`
+          : viewingPdf.fileUrl;
+        await Linking.openURL(externalUrl);
       } else {
         const contentUri = await FileSystem.getContentUriAsync(viewingPdf.fileUrl);
         await Linking.openURL(contentUri);
@@ -799,7 +826,10 @@ export default function App() {
         finalFileName = stored.fileName;
         isLocal = true;
       } else {
+        const norm = normalizeDocumentUrl(finalFileUrl);
+        finalFileUrl = norm.url;
         finalFileType = detectFileType(finalFileUrl);
+        isLocal = false;
       }
 
       const updated = await addImportantPdf({
@@ -1829,49 +1859,60 @@ export default function App() {
                   )}
                 />
               ) : (
-                <WebView
-                  ref={pdfWebViewRef}
-                  style={styles.pdfViewerWebview}
-                  source={{
-                    uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewingPdf.fileUrl)}`,
-                  }}
-                  javaScriptEnabled={true}
-                  domStorageEnabled={true}
-                  startInLoadingState={true}
-                  scalesPageToFit={true}
-                  setSupportMultipleWindows={false}
-                  onShouldStartLoadWithRequest={(request) => {
-                    if (
-                      request.url.includes("docs.google.com") ||
-                      request.url.includes("google.com/gview") ||
-                      request.url === viewingPdf.fileUrl
-                    ) {
-                      return true;
-                    }
-                    return false;
-                  }}
-                  renderLoading={() => (
-                    <View style={styles.pdfViewerLoading}>
-                      <ActivityIndicator size="large" color={COLORS.primary} />
-                      <Text style={styles.pdfViewerLoadingText}>Loading document in-app…</Text>
-                    </View>
-                  )}
-                  renderError={() => (
-                    <View style={styles.pdfViewerErrorWrap}>
-                      <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
-                      <Text style={styles.pdfViewerErrorTitle}>Unable to Display Online Document</Text>
-                      <Text style={styles.pdfViewerErrorSub}>
-                        Google Docs preview could not load this online link. You can open it directly in your browser or document viewer app.
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.pdfViewerRetryBtn}
-                        onPress={handleOpenExternal}
-                      >
-                        <Text style={styles.pdfViewerRetryBtnText}>Open with External App</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                />
+                (() => {
+                  const driveId = extractGoogleDriveFileId(viewingPdf.fileUrl);
+                  const remoteUri = driveId
+                    ? getGoogleDrivePreviewUrl(driveId)
+                    : viewingPdf.fileUrl.startsWith("http") && !viewingPdf.fileUrl.toLowerCase().endsWith(".pdf")
+                    ? viewingPdf.fileUrl
+                    : `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewingPdf.fileUrl)}`;
+
+                  return (
+                    <WebView
+                      ref={pdfWebViewRef}
+                      style={styles.pdfViewerWebview}
+                      source={{ uri: remoteUri }}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                      startInLoadingState={true}
+                      scalesPageToFit={true}
+                      setSupportMultipleWindows={false}
+                      onShouldStartLoadWithRequest={(request) => {
+                        if (
+                          request.url.includes("docs.google.com") ||
+                          request.url.includes("drive.google.com") ||
+                          request.url.includes("google.com") ||
+                          request.url.startsWith("http://") ||
+                          request.url.startsWith("https://")
+                        ) {
+                          return true;
+                        }
+                        return false;
+                      }}
+                      renderLoading={() => (
+                        <View style={styles.pdfViewerLoading}>
+                          <ActivityIndicator size="large" color={COLORS.primary} />
+                          <Text style={styles.pdfViewerLoadingText}>Loading document in-app…</Text>
+                        </View>
+                      )}
+                      renderError={() => (
+                        <View style={styles.pdfViewerErrorWrap}>
+                          <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
+                          <Text style={styles.pdfViewerErrorTitle}>Unable to Display Online Document</Text>
+                          <Text style={styles.pdfViewerErrorSub}>
+                            This online document could not be previewed in-app. You can open it directly in your browser or document viewer app.
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.pdfViewerRetryBtn}
+                            onPress={handleOpenExternal}
+                          >
+                            <Text style={styles.pdfViewerRetryBtnText}>Open with External App</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    />
+                  );
+                })()
               )}
             </View>
           )}
