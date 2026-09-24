@@ -1,4 +1,9 @@
 import * as FileSystem from "expo-file-system/legacy";
+import {
+  fetchPdfsFromSupabase,
+  insertPdfToSupabase,
+  deletePdfFromSupabase,
+} from "./supabaseClient";
 
 export type DocumentFileType = "pdf" | "image" | "doc" | "text" | "other";
 
@@ -393,6 +398,30 @@ export async function saveImportantPdfs(items: ImportantPdfItem[]): Promise<void
   }
 }
 
+export async function syncPdfsWithSupabase(): Promise<ImportantPdfItem[] | null> {
+  try {
+    const remote = await fetchPdfsFromSupabase();
+    if (remote && remote.length > 0) {
+      const local = await loadImportantPdfs();
+      const map = new Map<string, ImportantPdfItem>();
+      for (const item of remote) {
+        map.set(item.id, item);
+      }
+      for (const item of local) {
+        if (!map.has(item.id)) {
+          map.set(item.id, item);
+        }
+      }
+      const merged = Array.from(map.values());
+      await saveImportantPdfs(merged);
+      return merged;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function addImportantPdf(
   item: Omit<ImportantPdfItem, "id" | "uploadedAt">
 ): Promise<ImportantPdfItem[]> {
@@ -410,6 +439,10 @@ export async function addImportantPdf(
   };
   const updated = [newItem, ...current];
   await saveImportantPdfs(updated);
+
+  // Sync to Supabase table in background
+  void insertPdfToSupabase(newItem);
+
   return updated;
 }
 
@@ -428,6 +461,9 @@ export async function deleteImportantPdf(id: string): Promise<ImportantPdfItem[]
       // Ignore physical deletion error if file already removed
     }
   }
+
+  // Delete from Supabase in background
+  void deletePdfFromSupabase(id, target?.fileUrl);
 
   const updated = current.filter((p) => p.id !== id);
   await saveImportantPdfs(updated);

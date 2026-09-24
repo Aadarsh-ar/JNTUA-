@@ -71,7 +71,9 @@ import {
   getGoogleDriveDownloadUrl,
   normalizeDocumentUrl,
   fetchRemoteDocumentToCache,
+  syncPdfsWithSupabase,
 } from "./utils/pdfService";
+import { uploadPdfToSupabaseStorage } from "./utils/supabaseClient";
 
 const JNTUA_ICON = require("./assets/images/icon.png");
 
@@ -452,12 +454,17 @@ export default function App() {
   const [pickedFileUri, setPickedFileUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Load Important PDFs on mount
+  // Load Important PDFs on mount and sync with Supabase cloud
   useEffect(() => {
     let mounted = true;
     void (async () => {
       const items = await loadImportantPdfs();
       if (mounted) setPdfList(items);
+
+      const synced = await syncPdfsWithSupabase();
+      if (mounted && synced) {
+        setPdfList(synced);
+      }
     })();
     return () => { mounted = false; };
   }, []);
@@ -818,13 +825,26 @@ export default function App() {
       let isLocal = false;
 
       if (uploadMode === "file" && pickedFileUri) {
-        // Persist file permanently into local database folder
-        const stored = await storeLocalDocument(pickedFileUri, pickedFileName || "document.pdf");
-        finalFileUrl = stored.persistentUri;
-        finalFileSize = stored.fileSize;
-        finalFileType = stored.fileType;
-        finalFileName = stored.fileName;
-        isLocal = true;
+        // Attempt cloud upload to Supabase Storage first for cloud distribution
+        const sbUpload = await uploadPdfToSupabaseStorage(
+          pickedFileUri,
+          pickedFileName || "document.pdf"
+        );
+        if (sbUpload) {
+          finalFileUrl = sbUpload.publicUrl;
+          finalFileSize = newPdfSize.trim() || "—";
+          finalFileType = detectFileType(pickedFileName || "document.pdf");
+          finalFileName = pickedFileName ?? "Document";
+          isLocal = false;
+        } else {
+          // Fallback to storing locally in device document database
+          const stored = await storeLocalDocument(pickedFileUri, pickedFileName || "document.pdf");
+          finalFileUrl = stored.persistentUri;
+          finalFileSize = stored.fileSize;
+          finalFileType = stored.fileType;
+          finalFileName = stored.fileName;
+          isLocal = true;
+        }
       } else {
         const norm = normalizeDocumentUrl(finalFileUrl);
         finalFileUrl = norm.url;
@@ -854,7 +874,12 @@ export default function App() {
       setPickedFileName(null);
       setPickedFileUri(null);
       setUploadMode("file");
-      Alert.alert("Stored Successfully", "Document is permanently saved to your database archive.");
+      Alert.alert(
+        "Published Successfully",
+        isLocal
+          ? "Document saved to your local offline archive."
+          : "Document uploaded to Supabase cloud archive for all students."
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to store document";
       Alert.alert("Storage Error", `Could not save document to database: ${msg}`);

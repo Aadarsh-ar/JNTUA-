@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/outfit": "^0.4.3",
+    "@supabase/supabase-js": "^2.117.1",
     "expo": "~54.0.37",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.14",
