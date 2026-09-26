@@ -63,7 +63,12 @@ export async function fetchPdfsFromSupabase(): Promise<ImportantPdfItem[] | null
   try {
     const url = `${SUPABASE_URL}/rest/v1/important_pdfs?select=*&order=created_at.desc`;
     const res = await fetch(url, {
-      headers: getHeaders({ Accept: "application/json" }),
+      headers: getHeaders({
+        Accept: "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      }),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as {
@@ -85,15 +90,15 @@ export async function fetchPdfsFromSupabase(): Promise<ImportantPdfItem[] | null
     return data.map((row) => ({
       id: row.id,
       year: (row.year === 1 || row.year === 2 || row.year === 3 || row.year === 4 ? row.year : 1),
-      semester: row.semester,
-      subject: row.subject,
-      title: row.title,
+      semester: row.semester || "1-1",
+      subject: row.subject || "General",
+      title: row.title || "Document",
       regulation: row.regulation,
       fileUrl: row.file_url,
-      fileSize: row.file_size,
+      fileSize: row.file_size || "—",
       fileType: (row.file_type as ImportantPdfItem["fileType"]) || "pdf",
-      fileName: row.file_name,
-      uploadedAt: row.uploaded_at,
+      fileName: row.file_name || row.title,
+      uploadedAt: row.uploaded_at || "Recent",
       isLocal: false,
     }));
   } catch {
@@ -108,7 +113,7 @@ export async function insertPdfToSupabase(item: ImportantPdfItem): Promise<boole
       method: "POST",
       headers: getHeaders({
         "Content-Type": "application/json",
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       }),
       body: JSON.stringify({
         id: item.id,
@@ -135,19 +140,28 @@ export async function deletePdfFromSupabase(id: string, fileUrl?: string): Promi
   try {
     // 1. Delete from database
     const url = `${SUPABASE_URL}/rest/v1/important_pdfs?id=eq.${encodeURIComponent(id)}`;
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "DELETE",
-      headers: getHeaders(),
+      headers: getHeaders({
+        Prefer: "return=representation",
+      }),
     });
 
-    // 2. If stored in Supabase storage, delete physical object
-    if (fileUrl && fileUrl.includes(`/storage/v1/object/public/${SUPABASE_BUCKET}/`)) {
-      const parts = fileUrl.split(`/storage/v1/object/public/${SUPABASE_BUCKET}/`);
-      const storagePath = parts[1];
-      if (storagePath) {
-        await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${storagePath}`, {
+    if (!res.ok) {
+      return false;
+    }
+
+    // 2. If stored in Supabase storage, delete physical object cleanly
+    if (fileUrl) {
+      const cleanUrl = fileUrl.split("?")[0];
+      const match = cleanUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+      if (match) {
+        const bucket = match[1];
+        const storagePath = decodeURIComponent(match[2]);
+        await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
           method: "DELETE",
-          headers: getHeaders(),
+          headers: getHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ prefixes: [storagePath] }),
         });
       }
     }
@@ -156,3 +170,74 @@ export async function deletePdfFromSupabase(id: string, fileUrl?: string): Promi
     return false;
   }
 }
+
+export async function deleteAllPdfsFromSupabase(yearFilter?: number): Promise<boolean> {
+  try {
+    // 1. Fetch current items to delete physical storage files if stored on Supabase
+    const all = await fetchPdfsFromSupabase();
+    if (all && all.length > 0) {
+      const targets = typeof yearFilter === "number" && yearFilter > 0
+        ? all.filter((p) => p.year === yearFilter)
+        : all;
+
+      for (const item of targets) {
+        if (item.fileUrl) {
+          const cleanUrl = item.fileUrl.split("?")[0];
+          const match = cleanUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+          if (match) {
+            const bucket = match[1];
+            const storagePath = decodeURIComponent(match[2]);
+            await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
+              method: "DELETE",
+              headers: getHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify({ prefixes: [storagePath] }),
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Delete rows from database
+    const query = typeof yearFilter === "number" && yearFilter > 0
+      ? `year=eq.${yearFilter}`
+      : "id=not.is.null";
+    const url = `${SUPABASE_URL}/rest/v1/important_pdfs?${query}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: getHeaders({
+        Prefer: "return=representation",
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function updatePdfInSupabase(item: ImportantPdfItem): Promise<boolean> {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/important_pdfs?id=eq.${encodeURIComponent(item.id)}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: getHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      }),
+      body: JSON.stringify({
+        year: item.year,
+        semester: item.semester,
+        subject: item.subject,
+        title: item.title,
+        regulation: item.regulation ?? null,
+        file_url: item.fileUrl,
+        file_size: item.fileSize,
+        file_type: item.fileType,
+        file_name: item.fileName ?? item.title,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+

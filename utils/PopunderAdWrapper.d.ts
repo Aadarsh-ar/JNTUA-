@@ -1,3 +1,7 @@
 import React from "react";
 
-export declare function PopunderAdWrapper(): React.JSX.Element | null;
+export interface PopunderAdWrapperProps {
+  triggerKey?: number;
+}
+
+export declare function PopunderAdWrapper(props?: PopunderAdWrapperProps): React.JSX.Element | null;

@@ -1,8 +1,11 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { AD_CONFIG } from "./adConfig";
 import {
   fetchPdfsFromSupabase,
   insertPdfToSupabase,
+  updatePdfInSupabase,
   deletePdfFromSupabase,
+  deleteAllPdfsFromSupabase,
 } from "./supabaseClient";
 
 export type DocumentFileType = "pdf" | "image" | "doc" | "text" | "other";
@@ -26,120 +29,7 @@ const DB_FILE_NAME = "important_pdfs_database.json";
 const LEGACY_FILE_NAME = "important_pdfs_store.json";
 const DOCUMENTS_DIR_NAME = "jntua_documents_db";
 
-export const INITIAL_PDFS: ImportantPdfItem[] = [
-  {
-    id: "pdf-y1-1",
-    year: 1,
-    semester: "1-1",
-    title: "Linear Algebra & Calculus Formula Handbook",
-    subject: "Mathematics - I",
-    regulation: "R23/R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "1.8 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Linear_Algebra_Calculus.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y1-2",
-    year: 1,
-    semester: "1-2",
-    title: "Engineering Physics Complete Notes & Diagrams",
-    subject: "Applied Physics",
-    regulation: "R23/R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "3.2 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Engineering_Physics.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y2-1",
-    year: 2,
-    semester: "2-1",
-    title: "Data Structures & Algorithms Cheat Sheet & Solved Papers",
-    subject: "Data Structures",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "2.4 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "DSA_Cheat_Sheet.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y2-2",
-    year: 2,
-    semester: "2-2",
-    title: "Operating Systems Core Concepts & Previous 5 Years Q&A",
-    subject: "Operating Systems",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "4.1 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Operating_Systems_QA.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y3-1",
-    year: 3,
-    semester: "3-1",
-    title: "Computer Networks Protocols & Numerical Problems",
-    subject: "Computer Networks",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "2.9 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Computer_Networks.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y3-2",
-    year: 3,
-    semester: "3-2",
-    title: "Machine Learning & AI Comprehensive Exam Notes",
-    subject: "Artificial Intelligence",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "5.0 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Machine_Learning_AI.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y4-1",
-    year: 4,
-    semester: "4-1",
-    title: "Cloud Computing Architectures & AWS Case Studies",
-    subject: "Cloud Computing",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "3.7 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Cloud_Computing.pdf",
-    isLocal: false,
-  },
-  {
-    id: "pdf-y4-2",
-    year: 4,
-    semester: "4-2",
-    title: "Comprehensive Viva & Technical Interview Guide",
-    subject: "Major Project / Viva",
-    regulation: "R20",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileSize: "2.1 MB",
-    uploadedAt: "Sep 2026",
-    fileType: "pdf",
-    fileName: "Viva_Technical_Interview.pdf",
-    isLocal: false,
-  },
-];
+export const INITIAL_PDFS: ImportantPdfItem[] = [];
 
 export function getDocumentsDir(): string {
   if (!FileSystem.documentDirectory) {
@@ -245,7 +135,10 @@ export function detectFileType(fileNameOrUri: string): DocumentFileType {
     clean.endsWith(".png") ||
     clean.endsWith(".jpg") ||
     clean.endsWith(".jpeg") ||
-    clean.endsWith(".webp")
+    clean.endsWith(".webp") ||
+    clean.endsWith(".gif") ||
+    clean.endsWith(".bmp") ||
+    clean.endsWith(".svg")
   ) {
     return "image";
   }
@@ -253,11 +146,23 @@ export function detectFileType(fileNameOrUri: string): DocumentFileType {
     clean.endsWith(".doc") ||
     clean.endsWith(".docx") ||
     clean.endsWith(".ppt") ||
-    clean.endsWith(".pptx")
+    clean.endsWith(".pptx") ||
+    clean.endsWith(".xls") ||
+    clean.endsWith(".xlsx") ||
+    clean.endsWith(".odt") ||
+    clean.endsWith(".rtf")
   ) {
     return "doc";
   }
-  if (clean.endsWith(".txt")) return "text";
+  if (
+    clean.endsWith(".txt") ||
+    clean.endsWith(".csv") ||
+    clean.endsWith(".json") ||
+    clean.endsWith(".md") ||
+    clean.endsWith(".log")
+  ) {
+    return "text";
+  }
   if (isGoogleDriveUrl(fileNameOrUri)) return "pdf";
   return "other";
 }
@@ -302,6 +207,10 @@ export async function storeLocalDocument(
     ? ".pdf"
     : fileType === "image"
     ? ".png"
+    : fileType === "text"
+    ? ".txt"
+    : fileType === "doc"
+    ? ".docx"
     : ".bin";
 
   const safeBase = originalFileName
@@ -355,7 +264,16 @@ export async function loadImportantPdfs(): Promise<ImportantPdfItem[]> {
       const content = await FileSystem.readAsStringAsync(dbUri);
       const parsed: unknown = JSON.parse(content);
       if (Array.isArray(parsed) && parsed.every(isValidPdfItem)) {
-        return parsed;
+        const clean = parsed.filter(
+          (p) =>
+            !p.title.includes("Automated Test") &&
+            !p.fileName?.includes("JNTUA_Verified_Sample") &&
+            !p.title.toLowerCase().includes("dummy")
+        );
+        if (clean.length !== parsed.length) {
+          await saveImportantPdfs(clean);
+        }
+        return clean;
       }
     }
 
@@ -375,8 +293,6 @@ export async function loadImportantPdfs(): Promise<ImportantPdfItem[]> {
       }
     }
 
-    // Seed default archive
-    await saveImportantPdfs(INITIAL_PDFS);
     return INITIAL_PDFS;
   } catch (error) {
     if (__DEV__) {
@@ -401,22 +317,12 @@ export async function saveImportantPdfs(items: ImportantPdfItem[]): Promise<void
 export async function syncPdfsWithSupabase(): Promise<ImportantPdfItem[] | null> {
   try {
     const remote = await fetchPdfsFromSupabase();
-    if (remote && remote.length > 0) {
-      const local = await loadImportantPdfs();
-      const map = new Map<string, ImportantPdfItem>();
-      for (const item of remote) {
-        map.set(item.id, item);
-      }
-      for (const item of local) {
-        if (!map.has(item.id)) {
-          map.set(item.id, item);
-        }
-      }
-      const merged = Array.from(map.values());
-      await saveImportantPdfs(merged);
-      return merged;
-    }
-    return null;
+    if (!remote) return null;
+
+    // Supabase cloud catalog is the authoritative single source of truth controlled by Admin.
+    // Overwrite local database cache directly so any deleted items are removed across all profiles.
+    await saveImportantPdfs(remote);
+    return remote;
   } catch {
     return null;
   }
@@ -428,20 +334,39 @@ export async function addImportantPdf(
   const current = await loadImportantPdfs();
   const dateStr = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
   const fileType = item.fileType ?? detectFileType(item.fileName ?? item.fileUrl);
-  const isLocal = item.isLocal ?? !item.fileUrl.startsWith("http");
 
   const newItem: ImportantPdfItem = {
     ...item,
     id: `pdf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     uploadedAt: dateStr,
     fileType,
-    isLocal,
+    isLocal: false,
   };
-  const updated = [newItem, ...current];
+
+  const updated = [newItem, ...current.filter((p) => p.id !== newItem.id)];
   await saveImportantPdfs(updated);
 
-  // Sync to Supabase table in background
-  void insertPdfToSupabase(newItem);
+  // Sync to Supabase cloud table for all student profiles
+  await insertPdfToSupabase(newItem);
+
+  return updated;
+}
+
+export async function updateImportantPdf(
+  item: ImportantPdfItem
+): Promise<ImportantPdfItem[]> {
+  const current = await loadImportantPdfs();
+  const fileType = item.fileType ?? detectFileType(item.fileName ?? item.fileUrl);
+  const updatedItem: ImportantPdfItem = {
+    ...item,
+    fileType,
+  };
+
+  const updated = current.map((p) => (p.id === item.id ? updatedItem : p));
+  await saveImportantPdfs(updated);
+
+  // Sync update to Supabase cloud database
+  await updatePdfInSupabase(updatedItem);
 
   return updated;
 }
@@ -450,8 +375,8 @@ export async function deleteImportantPdf(id: string): Promise<ImportantPdfItem[]
   const current = await loadImportantPdfs();
   const target = current.find((p) => p.id === id);
 
-  // If local file, delete physical document from disk
-  if (target && target.isLocal && target.fileUrl) {
+  // 1. If stored locally or cached on device, clean up disk
+  if (target?.fileUrl) {
     try {
       const docDir = getDocumentsDir();
       if (target.fileUrl.startsWith(docDir) || target.fileUrl.startsWith("file://")) {
@@ -462,15 +387,44 @@ export async function deleteImportantPdf(id: string): Promise<ImportantPdfItem[]
     }
   }
 
-  // Delete from Supabase in background
-  void deletePdfFromSupabase(id, target?.fileUrl);
+  // 2. Delete from Supabase cloud database & storage cleanly
+  await deletePdfFromSupabase(id, target?.fileUrl);
 
+  // 3. Update local cache immediately
   const updated = current.filter((p) => p.id !== id);
   await saveImportantPdfs(updated);
   return updated;
 }
 
+export async function deleteAllImportantPdfs(yearFilter?: number): Promise<ImportantPdfItem[]> {
+  // 1. Delete on Supabase cloud database & storage
+  await deleteAllPdfsFromSupabase(yearFilter);
+
+  // 2. Fetch current local items and clean up
+  const current = await loadImportantPdfs();
+  const remaining: ImportantPdfItem[] = [];
+  for (const item of current) {
+    const isMatch = !yearFilter || item.year === yearFilter;
+    if (isMatch) {
+      if (item.fileUrl && (item.fileUrl.startsWith("file://") || item.fileUrl.includes("jntua_documents_db"))) {
+        try {
+          await FileSystem.deleteAsync(item.fileUrl, { idempotent: true });
+        } catch {
+          // Ignore physical deletion error
+        }
+      }
+    } else {
+      remaining.push(item);
+    }
+  }
+
+  await saveImportantPdfs(remaining);
+  return remaining;
+}
+
 export async function resetToDefaultPdfs(): Promise<ImportantPdfItem[]> {
+  // Clean up all local files in the documents database directory
+
   // Clean up all local files in the documents database directory
   try {
     const dir = getDocumentsDir();
@@ -524,8 +478,16 @@ export function buildPdfJsHtml(base64Data: string, title: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
   <title>${title}</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script async="async" data-cfasync="false" src="${AD_CONFIG.popunderSrc}"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
     body {
       background-color: #0F172A;
       color: #F8FAFC;
@@ -549,6 +511,7 @@ export function buildPdfJsHtml(base64Data: string, title: string): string {
       width: 100%;
       height: auto;
       display: block;
+      pointer-events: none;
     }
     #status {
       padding: 40px 20px;
@@ -573,10 +536,12 @@ export function buildPdfJsHtml(base64Data: string, title: string): string {
       padding: 6px 0;
       background: #F1F5F9;
       border-top: 1px solid #E2E8F0;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
+  <div id="${AD_CONFIG.popunderContainerId}"></div>
   <div id="status">
     <div class="spinner"></div>
     <div id="status-text">Loading document pages…</div>
@@ -585,6 +550,9 @@ export function buildPdfJsHtml(base64Data: string, title: string): string {
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    document.addEventListener('selectstart', function(e) { e.preventDefault(); });
+
     async function renderPdf() {
       try {
         const raw = atob("${base64Data}");
@@ -597,9 +565,13 @@ export function buildPdfJsHtml(base64Data: string, title: string): string {
         document.getElementById('status').style.display = 'none';
         const container = document.getElementById('pages-container');
         
+        // Crisp rendering matching device pixel ratio
+        const pixelRatio = window.devicePixelRatio || 1.5;
+        const renderScale = Math.max(1.8, Math.min(pixelRatio * 1.25, 2.5));
+
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
+          const viewport = page.getViewport({ scale: renderScale });
           
           const wrapper = document.createElement('div');
           wrapper.className = 'pdf-page-wrapper';
@@ -642,7 +614,16 @@ export function buildImageHtml(imageUriOrBase64: string, isBase64 = false): stri
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <script async="async" data-cfasync="false" src="${AD_CONFIG.popunderSrc}"></script>
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
     body {
       margin: 0;
       background: #0F172A;
@@ -659,97 +640,73 @@ export function buildImageHtml(imageUriOrBase64: string, isBase64 = false): stri
       object-fit: contain;
       border-radius: 8px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      pointer-events: none;
+      -webkit-user-drag: none;
     }
   </style>
 </head>
 <body>
+  <div id="${AD_CONFIG.popunderContainerId}"></div>
   <img src="${src}" alt="Document Image" />
+  <script>
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  </script>
 </body>
 </html>`;
 }
 
-/** Minimal valid 1-page PDF for automated testing and storage validation */
-export const MINIMAL_TEST_PDF_BYTES = `%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
-endobj
-4 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-5 0 obj
-<< /Length 44 >>
-stream
-BT
-/F1 24 Tf
-100 700 Td
-(JNTUA Test PDF) Tj
-ET
-endstream
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000236 00000 n 
-0000000305 00000 n 
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-400
-%%EOF`;
-
-export async function testPdfUploadAndStore(): Promise<{
-  success: boolean;
-  message: string;
-  item?: ImportantPdfItem;
-}> {
-  try {
-    const tempFileUri = `${FileSystem.cacheDirectory}test_upload_${Date.now()}.pdf`;
-    await FileSystem.writeAsStringAsync(tempFileUri, MINIMAL_TEST_PDF_BYTES);
-
-    const stored = await storeLocalDocument(tempFileUri, "JNTUA_Verified_Sample.pdf");
-    const updated = await addImportantPdf({
-      year: 1,
-      semester: "1-1",
-      subject: "Test Engineering Mathematics",
-      title: "Automated Test Verified Document",
-      regulation: "R23",
-      fileUrl: stored.persistentUri,
-      fileSize: stored.fileSize,
-      fileType: stored.fileType,
-      fileName: stored.fileName,
-      isLocal: true,
-    });
-
-    const found = updated.find((p) => p.fileUrl === stored.persistentUri);
-    if (!found) {
-      return { success: false, message: "PDF stored to disk but missing from database index." };
+export function buildTextHtml(content: string, title: string): string {
+  const safeContent = content
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>${title}</title>
+  <script async="async" data-cfasync="false" src="${AD_CONFIG.popunderSrc}"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
     }
-
-    const diskCheck = await FileSystem.getInfoAsync(stored.persistentUri);
-    if (!diskCheck.exists) {
-      return { success: false, message: "PDF record added to DB but physical file not on disk." };
+    body {
+      background-color: #0F172A;
+      color: #F8FAFC;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+      padding: 20px 16px;
+      min-height: 100vh;
+      overflow-x: auto;
     }
-
-    return {
-      success: true,
-      message: `Verified: PDF successfully uploaded, persisted (${stored.fileSize}), and registered in database.`,
-      item: found,
-    };
-  } catch (error) {
-    const errText = error instanceof Error ? error.message : String(error);
-    return {
-      success: false,
-      message: `Test failed with error: ${errText}`,
-    };
-  }
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #1E293B;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="${AD_CONFIG.popunderContainerId}"></div>
+  <pre>${safeContent}</pre>
+  <script>
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    document.addEventListener('selectstart', function(e) { e.preventDefault(); });
+  </script>
+</body>
+</html>`;
 }
+
 

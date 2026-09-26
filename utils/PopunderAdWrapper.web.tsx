@@ -1,6 +1,11 @@
 /**
  * Web implementation of PopunderAdWrapper (no-op on web).
  */
-export function PopunderAdWrapper() {
+interface Props {
+  triggerKey?: number;
+}
+
+export function PopunderAdWrapper(_props?: Props) {
   return null;
 }
+

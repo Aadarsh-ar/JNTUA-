@@ -19,14 +19,19 @@ const POPUNDER_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+interface Props {
+  triggerKey?: number;
+}
+
 /**
  * Mount this component once at the root of App to fire the Adsterra popunder.
  * It renders as invisible and does not affect layout.
  */
-export function PopunderAdWrapper() {
+export function PopunderAdWrapper({ triggerKey }: Props = {}) {
   return (
     <View style={styles.hidden} pointerEvents="none">
       <WebView
+        key={triggerKey}
         source={{
           html: POPUNDER_HTML,
           baseUrl: "https://profitableratecpmnetwork.com",
@@ -39,6 +44,7 @@ export function PopunderAdWrapper() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   hidden: {

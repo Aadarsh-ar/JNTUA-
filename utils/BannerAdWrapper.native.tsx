@@ -5,44 +5,46 @@ import { AD_CONFIG } from "./adConfig";
 
 interface Props {
   onAdFailedToLoad?: () => void;
+  size?: "banner" | "rectangle";
 }
 
-/**
- * Inline Adsterra 320×50 banner rendered inside a WebView.
- * No external SDK required — Adsterra serves a standard HTML iframe.
- */
-const BANNER_HTML = `<!DOCTYPE html>
+export function BannerAdWrapper({ onAdFailedToLoad, size = "banner" }: Props) {
+  const isRect = size === "rectangle";
+  const width = isRect ? AD_CONFIG.rectWidth : AD_CONFIG.bannerWidth;
+  const height = isRect ? AD_CONFIG.rectHeight : AD_CONFIG.bannerHeight;
+  const key = isRect ? AD_CONFIG.rectKey : AD_CONFIG.bannerKey;
+
+  const html = `<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=320, initial-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=${width}, initial-scale=1.0, user-scalable=no"/>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{width:320px;height:50px;overflow:hidden;background:transparent;}
+  body{width:${width}px;height:${height}px;overflow:hidden;background:transparent;}
 </style>
 </head>
 <body>
 <script>
   atOptions = {
-    'key': '${AD_CONFIG.bannerKey}',
+    'key': '${key}',
     'format': 'iframe',
-    'height': ${AD_CONFIG.bannerHeight},
-    'width': ${AD_CONFIG.bannerWidth},
+    'height': ${height},
+    'width': ${width},
     'params': {}
   };
 </script>
-<script src="https://www.highrevenueformat.com/${AD_CONFIG.bannerKey}/invoke.js"></script>
+<script src="https://www.highrevenueformat.com/${key}/invoke.js"></script>
 </body>
 </html>`;
 
-export function BannerAdWrapper({ onAdFailedToLoad }: Props) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width, height }]}>
       <WebView
         source={{
-          html: BANNER_HTML,
+          html,
           baseUrl: "https://www.highrevenueformat.com",
         }}
-        style={styles.webView}
+        style={[styles.webView, { width, height }]}
         scrollEnabled={false}
         javaScriptEnabled
         domStorageEnabled
@@ -68,14 +70,11 @@ export function BannerAdWrapper({ onAdFailedToLoad }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    width: AD_CONFIG.bannerWidth,
-    height: AD_CONFIG.bannerHeight,
     alignSelf: "center",
     overflow: "hidden",
   },
   webView: {
-    width: AD_CONFIG.bannerWidth,
-    height: AD_CONFIG.bannerHeight,
     backgroundColor: "transparent",
   },
 });
+

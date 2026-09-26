@@ -6,29 +6,37 @@
   <title>JNTUA Admin · Important PDFs Curator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --canvas: #F6F7F9;
-      --canvas-subtle: #EDEFF2;
-      --card: #FFFFFF;
-      --ink: #0F172A;
-      --body: #334155;
+      --canvas: #090D16;
+      --canvas-surface: #0E1424;
+      --card: rgba(255, 255, 255, 0.035);
+      --card-hover: rgba(255, 255, 255, 0.06);
+      --card-solid: #131A2E;
+      --ink: #F8FAFC;
+      --body: #CBD5E1;
       --muted: #64748B;
-      --hairline: rgba(15, 23, 42, 0.08);
-      --hairline-focus: rgba(15, 23, 42, 0.25);
-      --primary: #0F172A;
-      --accent: #2563EB;
-      --success: #059669;
-      --danger: #E11D48;
+      --muted-soft: #94A3B8;
+      --hairline: rgba(255, 255, 255, 0.08);
+      --hairline-focus: rgba(56, 189, 248, 0.4);
+      --primary: #38BDF8;
+      --primary-hover: #0EA5E9;
+      --primary-glow: rgba(56, 189, 248, 0.18);
+      --accent: #818CF8;
+      --success: #10B981;
+      --success-soft: rgba(16, 185, 129, 0.12);
+      --danger: #F43F5E;
+      --danger-soft: rgba(244, 63, 94, 0.12);
+      --amber: #F59E0B;
       --font-vogue: 'Cormorant Garamond', Georgia, serif;
       --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-display: 'Outfit', sans-serif;
-      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
-      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.03);
-      --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.07), 0 4px 8px rgba(15, 23, 42, 0.04);
-      --radius: 14px;
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+      --radius: 16px;
     }
 
     * {
@@ -44,14 +52,17 @@
       min-height: 100vh;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
-      background-image: radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.03) 0px, transparent 50%),
-                        radial-gradient(at 0% 100%, rgba(15, 23, 42, 0.03) 0px, transparent 50%);
+      background-image: 
+        radial-gradient(ellipse 90% 45% at 50% -10%, rgba(56, 189, 248, 0.12), transparent),
+        radial-gradient(circle 600px at 95% 40%, rgba(16, 185, 129, 0.06), transparent),
+        radial-gradient(circle 500px at 5% 85%, rgba(129, 140, 248, 0.05), transparent);
+      background-attachment: fixed;
     }
 
     .container {
-      max-width: 1140px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 32px 24px 80px;
+      padding: 36px 24px 80px;
     }
 
     /* Top Bar Header */
@@ -61,13 +72,28 @@
       align-items: center;
       padding-bottom: 24px;
       border-bottom: 1px solid var(--hairline);
-      margin-bottom: 32px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     .brand-wrap {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.1));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
     }
 
     .brand-title {
@@ -76,24 +102,55 @@
       font-weight: 700;
       letter-spacing: -0.5px;
       color: var(--ink);
+      line-height: 1.1;
     }
 
     .brand-tag {
       font-family: var(--font-display);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      padding: 4px 8px;
-      background: var(--canvas-subtle);
+      padding: 3px 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
       border-radius: 6px;
-      color: var(--muted);
+      color: var(--primary);
     }
 
     .header-actions {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .cloud-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #34D399;
+      font-family: var(--font-display);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
     }
 
     .btn {
@@ -112,36 +169,59 @@
     }
 
     .btn-primary {
-      background: var(--primary);
-      color: #FFF;
+      background: linear-gradient(135deg, #38BDF8, #0284C7);
+      color: #04111D;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
     }
 
-    .btn-primary:hover {
-      background: #1E293B;
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #7DD3FC, #0284C7);
       transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .btn-secondary {
       background: var(--card);
       border-color: var(--hairline);
-      color: var(--ink);
+      color: var(--body);
+      backdrop-filter: blur(8px);
     }
 
     .btn-secondary:hover {
-      background: var(--canvas);
-      border-color: var(--hairline-focus);
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--ink);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      border-color: rgba(244, 63, 94, 0.25);
+      color: #FB7185;
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.22);
+      border-color: rgba(244, 63, 94, 0.45);
+      color: #FFF;
     }
 
     /* Main Grid */
     .admin-grid {
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 420px 1fr;
       gap: 32px;
       align-items: start;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .admin-grid {
         grid-template-columns: 1fr;
       }
@@ -152,59 +232,168 @@
       background: var(--card);
       border: 1px solid var(--hairline);
       border-radius: var(--radius);
-      padding: 24px;
+      padding: 26px;
       box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 24px;
     }
 
     .panel-header {
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+      margin-bottom: 22px;
+      padding-bottom: 16px;
       border-bottom: 1px solid var(--hairline);
     }
 
     .panel-title {
       font-family: var(--font-vogue);
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 600;
       color: var(--ink);
+      letter-spacing: -0.2px;
     }
 
     .panel-desc {
-      font-size: 12.5px;
-      color: var(--muted);
+      font-size: 13px;
+      color: var(--muted-soft);
       margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    /* Source Mode Switcher */
+    .mode-switch-group {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 3px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      border: 1px solid var(--hairline);
+    }
+
+    .mode-switch-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
+      color: var(--muted-soft);
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .mode-switch-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 24px 16px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.04);
+      transform: translateY(-1px);
+    }
+
+    .drop-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    .drop-zone:hover .drop-icon {
+      transform: scale(1.1);
+    }
+
+    .drop-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .drop-hint {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    .file-ready-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 3px 10px;
+      background: var(--success-soft);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      color: #34D399;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-display);
     }
 
     /* Form Styles */
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 15px;
     }
 
     .form-label {
       display: block;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-      color: var(--body);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--muted-soft);
       margin-bottom: 6px;
+      font-family: var(--font-display);
     }
 
     .form-input, .form-select {
       width: 100%;
-      padding: 10px 12px;
-      background: var(--canvas);
+      padding: 11px 14px;
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--hairline);
-      border-radius: 8px;
+      border-radius: 10px;
       font-family: var(--font-ui);
       font-size: 13.5px;
       color: var(--ink);
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s;
+    }
+
+    .form-input::placeholder {
+      color: #475569;
     }
 
     .form-input:focus, .form-select:focus {
       border-color: var(--primary);
-      background: #FFF;
+      background: rgba(0, 0, 0, 0.5);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+    }
+
+    .form-select option {
+      background: var(--canvas-surface);
+      color: var(--ink);
     }
 
     .form-row {
@@ -213,38 +402,81 @@
       gap: 12px;
     }
 
-    /* Drop Zone */
-    .drop-zone {
-      border: 2px dashed var(--hairline-focus);
+    /* Upload Progress Banner */
+    .upload-progress-bar-wrap {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
       border-radius: 10px;
-      padding: 24px 16px;
-      text-align: center;
-      background: var(--canvas);
-      cursor: pointer;
+    }
+
+    .upload-progress-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spinner-sm {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Right Controls Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 240px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 9px 14px 9px 36px;
+      background: var(--card);
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--ink);
+      outline: none;
       transition: all 0.2s;
-      margin-bottom: 16px;
     }
 
-    .drop-zone:hover, .drop-zone.dragover {
+    .search-input:focus {
       border-color: var(--primary);
-      background: #FFF;
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
     }
 
-    .drop-icon {
-      font-size: 28px;
-      margin-bottom: 6px;
-    }
-
-    .drop-text {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--body);
-    }
-
-    .drop-hint {
-      font-size: 11px;
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
       color: var(--muted);
-      margin-top: 4px;
+      font-size: 14px;
+      pointer-events: none;
     }
 
     /* Year Filter Pills */
@@ -252,33 +484,54 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-bottom: 20px;
       align-items: center;
     }
 
     .filter-pill {
-      padding: 7px 14px;
+      padding: 7px 15px;
       background: var(--card);
       border: 1px solid var(--hairline);
       border-radius: 20px;
       font-family: var(--font-display);
       font-size: 12.5px;
       font-weight: 600;
-      color: var(--muted);
+      color: var(--muted-soft);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .filter-pill:hover {
-      border-color: var(--hairline-focus);
+      border-color: rgba(255, 255, 255, 0.2);
       color: var(--ink);
     }
 
     .filter-pill.active {
-      background: var(--primary);
-      color: #FFF;
-      border-color: var(--primary);
-      box-shadow: var(--shadow-sm);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.08));
+      color: var(--primary);
+      border-color: rgba(56, 189, 248, 0.45);
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Archive Statistics Bar */
+    .stats-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 0 4px;
+    }
+
+    .stats-counter {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted-soft);
+      letter-spacing: 0.3px;
+    }
+
+    .stats-highlight {
+      color: var(--ink);
+      font-weight: 800;
     }
 
     /* PDF Archive List */
@@ -294,47 +547,66 @@
       align-items: center;
       background: var(--card);
       border: 1px solid var(--hairline);
-      border-radius: 12px;
-      padding: 16px 20px;
+      border-radius: 14px;
+      padding: 18px 22px;
       box-shadow: var(--shadow-sm);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
     }
 
     .pdf-card:hover {
-      border-color: rgba(15, 23, 42, 0.18);
+      background: var(--card-hover);
+      border-color: rgba(56, 189, 248, 0.25);
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
     }
 
+    .pdf-card.deleting {
+      opacity: 0.35;
+      transform: scale(0.98);
+      pointer-events: none;
+    }
+
     .pdf-info {
       flex: 1;
-      margin-right: 16px;
+      margin-right: 20px;
     }
 
     .pdf-meta-row {
       display: flex;
       gap: 8px;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
     }
 
     .pdf-badge {
       font-family: var(--font-display);
       font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: var(--canvas-subtle);
-      color: var(--body);
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--hairline);
+      color: var(--muted-soft);
     }
 
     .pdf-badge-year {
-      background: rgba(37, 99, 235, 0.08);
-      color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.25);
+      color: var(--primary);
+    }
+
+    .pdf-badge-cloud {
+      background: var(--success-soft);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #34D399;
     }
 
     .pdf-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.35;
@@ -343,7 +615,11 @@
     .pdf-sub {
       font-size: 12px;
       color: var(--muted);
-      margin-top: 3px;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .pdf-actions {
@@ -353,64 +629,170 @@
     }
 
     .action-icon-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       border: 1px solid var(--hairline);
-      background: var(--card);
+      background: rgba(255, 255, 255, 0.04);
       color: var(--body);
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
     }
 
     .action-icon-btn:hover {
-      background: var(--canvas);
+      background: rgba(255, 255, 255, 0.09);
       color: var(--ink);
-      border-color: var(--hairline-focus);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .action-icon-btn.delete {
+      color: #FB7185;
+      background: rgba(244, 63, 94, 0.06);
+      border-color: rgba(244, 63, 94, 0.15);
     }
 
     .action-icon-btn.delete:hover {
-      background: rgba(225, 29, 72, 0.08);
-      color: var(--danger);
-      border-color: rgba(225, 29, 72, 0.2);
+      background: rgba(244, 63, 94, 0.2);
+      color: #FFF;
+      border-color: rgba(244, 63, 94, 0.4);
+      box-shadow: 0 2px 10px rgba(244, 63, 94, 0.2);
     }
 
-    /* Modal for JSON Sync */
+    .action-icon-btn.edit {
+      color: #38BDF8;
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+
+    .action-icon-btn.edit:hover {
+      background: rgba(56, 189, 248, 0.22);
+      color: #FFF;
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25);
+    }
+
+    /* Modal for Deletion Confirmation */
     .modal-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(4px);
-      z-index: 100;
+      background: rgba(4, 7, 13, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 200;
       align-items: center;
       justify-content: center;
       padding: 20px;
     }
 
     .modal-content {
-      background: var(--card);
-      border-radius: var(--radius);
+      background: var(--card-solid);
+      border: 1px solid var(--hairline);
+      border-radius: 18px;
       width: 100%;
-      max-width: 580px;
-      padding: 24px;
+      max-width: 500px;
+      padding: 28px;
       box-shadow: var(--shadow-lg);
+      position: relative;
+    }
+
+    .modal-title {
+      font-family: var(--font-vogue);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .modal-desc {
+      font-size: 13.5px;
+      color: var(--muted-soft);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .delete-preview-box {
+      margin: 18px 0;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(244, 63, 94, 0.2);
+      border-radius: 10px;
+    }
+
+    .delete-preview-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #F8FAFC;
+    }
+
+    .delete-preview-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
     }
 
     .code-area {
       width: 100%;
-      height: 200px;
-      font-family: monospace;
+      height: 220px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 12px;
-      padding: 12px;
-      background: var(--canvas);
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.45);
       border: 1px solid var(--hairline);
-      border-radius: 8px;
-      margin: 14px 0;
+      border-radius: 10px;
+      color: #7DD3FC;
+      margin: 16px 0;
       resize: vertical;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 20px;
+      background: #1E293B;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: #F8FAFC;
+      font-size: 13.5px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: #064E3B;
+      color: #A7F3D0;
+    }
+
+    .toast.error {
+      border-color: rgba(244, 63, 94, 0.4);
+      background: #881337;
+      color: #FECDD3;
     }
   </style>
 </head>
@@ -419,18 +801,36 @@
   <div class="container">
     <header>
       <div class="brand-wrap">
-        <h1 class="brand-title">JNTUA Archive</h1>
-        <span class="brand-tag">Admin Curator</span>
+        <div class="brand-logo-badge">📚</div>
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <h1 class="brand-title">JNTUA Archive</h1>
+            <span class="brand-tag">Admin Curator</span>
+          </div>
+          <div style="font-size:12px; color:var(--muted-soft); margin-top:2px;">
+            Manage and curate official academic PDF documents & study materials.
+          </div>
+        </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" id="exportBtn" onclick="openSyncModal()">
-          Export / Sync JSON
+        <div class="cloud-status-badge" id="cloudStatusBadge">
+          <span class="status-dot"></span>
+          <span id="cloudStatusText">Supabase Live</span>
+        </div>
+        <button class="btn btn-secondary" onclick="openSyncModal()">
+          Export JSON
         </button>
-        <button class="btn btn-secondary" onclick="resetDefaults()">
-          Reset Defaults
+        <button class="btn btn-secondary" onclick="refreshFromSupabase()">
+          ↻ Sync Now
+        </button>
+        <button class="btn btn-danger" style="background:#dc2626; color:#fff;" onclick="promptDeleteAll(0)">
+          🗑️ Delete All Documents
+        </button>
+        <button class="btn btn-secondary" onclick="lockAdminCanvas()" title="Lock Admin Canvas Access">
+          🔒 Lock Canvas
         </button>
         <a href="../index.html" class="btn btn-secondary">
-          Student Portal
+          Student Portal ↗
         </a>
       </div>
     </header>
@@ -439,16 +839,36 @@
       <!-- Left: Upload / Add Form -->
       <div class="panel-card">
         <div class="panel-header">
-          <h2 class="panel-title">Add Important PDF</h2>
-          <p class="panel-desc">Upload or link essential academic materials for JNTUA students.</p>
+          <h2 class="panel-title">Add Important Document</h2>
+          <p class="panel-desc">Upload a PDF or paste an academic link to distribute to all students.</p>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="mode-switch-group">
+          <button type="button" class="mode-switch-btn active" id="modeFileBtn" onclick="setAddMode('file')">
+            📁 Upload Local Document
+          </button>
+          <button type="button" class="mode-switch-btn" id="modeLinkBtn" onclick="setAddMode('link')">
+            🔗 Drive / Public Link
+          </button>
         </div>
 
         <form id="pdfForm" onsubmit="handleFormSubmit(event)">
-          <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
-            <div class="drop-icon">📄</div>
-            <div class="drop-text" id="dropLabel">Choose or drag a PDF document</div>
-            <div class="drop-hint">Local file will be read and file details captured</div>
-            <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="handleFileSelected(event)" />
+          <!-- File Drop Zone -->
+          <div id="fileUploadSection">
+            <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+              <div class="drop-icon">📤</div>
+              <div class="drop-text" id="dropLabel">Choose or drag document (PDF, DOCX, PPT, Image)</div>
+              <div class="drop-hint">Uploads directly to Supabase cloud storage bucket</div>
+              <div id="fileReadyBadge" style="display:none;" class="file-ready-tag">✓ Ready for Cloud Upload</div>
+              <input type="file" id="fileInput" accept="*/*" style="display:none" onchange="handleFileSelected(event)" />
+            </div>
+          </div>
+
+          <!-- Link Mode Input -->
+          <div id="linkUploadSection" style="display:none;" class="form-group">
+            <label class="form-label">Document Link / URL</label>
+            <input type="url" class="form-input" id="urlInput" placeholder="https://drive.google.com/file/d/... or any public link" />
           </div>
 
           <div class="form-row">
@@ -463,29 +883,24 @@
             </div>
             <div class="form-group">
               <label class="form-label">Semester</label>
-              <input type="text" class="form-input" id="semInput" placeholder="e.g. 1-1, 2-2" required value="1-1" />
+              <input type="text" class="form-input" id="semInput" placeholder="e.g. 1-1, 2-1" required value="1-1" />
             </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Subject Name</label>
-            <input type="text" class="form-input" id="subjectInput" placeholder="e.g. Data Structures, Applied Physics" required />
+            <input type="text" class="form-input" id="subjectInput" placeholder="e.g. Mathematics - I, Data Structures" required />
           </div>
 
           <div class="form-group">
             <label class="form-label">Document Title</label>
-            <input type="text" class="form-input" id="titleInput" placeholder="e.g. Formula Handbook & Solved Q&A" required />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Regulation (Optional)</label>
-            <input type="text" class="form-input" id="regulationInput" placeholder="e.g. R23 / R20" value="R23/R20" />
+            <input type="text" class="form-input" id="titleInput" placeholder="e.g. Formula Handbook & Solved Papers" required />
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">PDF Link / URL</label>
-              <input type="url" class="form-input" id="urlInput" placeholder="https://example.com/file.pdf" required value="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" />
+              <label class="form-label">Regulation (Optional)</label>
+              <input type="text" class="form-input" id="regulationInput" placeholder="e.g. R23 / R20" value="R23/R20" />
             </div>
             <div class="form-group">
               <label class="form-label">File Size</label>
@@ -493,21 +908,54 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:8px;">
-            Add to Archive
+          <div class="upload-progress-bar-wrap" id="uploadProgressWrap">
+            <div class="upload-progress-text">
+              <div class="spinner-sm"></div>
+              <span id="uploadProgressLabel">Uploading file to Supabase storage…</span>
+            </div>
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;">
+            Publish to Cloud Archive
           </button>
         </form>
       </div>
 
-      <!-- Right: List & Filters -->
+      <!-- Right: List, Search & Filters -->
       <div>
-        <div class="filter-bar">
-          <span style="font-size:12px; font-weight:600; color:var(--muted); margin-right:6px;">Filter:</span>
-          <button class="filter-pill active" onclick="setFilter(0, this)">All Years</button>
-          <button class="filter-pill" onclick="setFilter(1, this)">1st Year</button>
-          <button class="filter-pill" onclick="setFilter(2, this)">2nd Year</button>
-          <button class="filter-pill" onclick="setFilter(3, this)">3rd Year</button>
-          <button class="filter-pill" onclick="setFilter(4, this)">4th Year</button>
+        <div class="controls-bar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input 
+              type="text" 
+              class="search-input" 
+              id="searchInput" 
+              placeholder="Search by subject, title or regulation…" 
+              oninput="handleSearch(event)"
+            />
+          </div>
+
+          <div class="filter-bar">
+            <button class="filter-pill active" onclick="setFilter(0, this)">All Years</button>
+            <button class="filter-pill" onclick="setFilter(1, this)">1st Year</button>
+            <button class="filter-pill" onclick="setFilter(2, this)">2nd Year</button>
+            <button class="filter-pill" onclick="setFilter(3, this)">3rd Year</button>
+            <button class="filter-pill" onclick="setFilter(4, this)">4th Year</button>
+          </div>
+        </div>
+
+        <div class="stats-header-bar">
+          <div class="stats-counter" id="statsCounter">
+            Showing <span class="stats-highlight" id="shownCount">0</span> documents
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" id="deleteFilteredYearBtn" style="display:none; padding: 6px 12px; font-size:12px; color:#dc2626; border-color:rgba(220,38,38,0.3);" onclick="promptDeleteAll(currentFilterYear)">
+              🗑️ Delete Year Documents
+            </button>
+            <button class="btn btn-danger" style="padding: 6px 12px; font-size:12px; background:#dc2626; color:#fff;" onclick="promptDeleteAll(0)">
+              🗑️ Delete All Documents
+            </button>
+          </div>
         </div>
 
         <div class="pdf-list" id="pdfListContainer">
@@ -517,12 +965,53 @@
     </div>
   </div>
 
-  <!-- Modal for JSON Sync with Mobile App -->
-  <div class="modal-overlay" id="syncModal">
+  <!-- Modal for Clean Single Deletion Confirmation -->
+  <div class="modal-overlay" id="deleteModal">
     <div class="modal-content">
-      <h3 style="font-family:var(--font-vogue); font-size:22px;">Sync Important PDFs Data</h3>
-      <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">
-        Copy this JSON data into your mobile app or backend storage.
+      <h3 class="modal-title">Delete Document Permanently</h3>
+      <p class="modal-desc">
+        Are you sure you want to delete this document? It will be removed from the Supabase database and deleted from cloud storage. All student apps will immediately see this updated everywhere.
+      </p>
+      
+      <div class="delete-preview-box">
+        <div class="delete-preview-title" id="deleteModalDocTitle">—</div>
+        <div class="delete-preview-meta" id="deleteModalDocMeta">—</div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="executeDelete()">
+          Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Bulk Deletion Confirmation -->
+  <div class="modal-overlay" id="deleteAllModal">
+    <div class="modal-content">
+      <h3 class="modal-title" style="color:var(--rose);">Delete Documents Permanently</h3>
+      <p class="modal-desc">
+        Are you sure you want to permanently delete <strong id="deleteAllModalScope" style="color:var(--ink);">all documents</strong>?
+      </p>
+      <div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:8px; padding:12px 14px; font-size:12.5px; color:#dc2626; margin:14px 0; line-height: 1.5;">
+        ⚠️ <strong>Irreversible Action:</strong> All matching documents will be removed from the Supabase cloud database and storage bucket. Every student's app will update automatically and see these files removed everywhere.
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button class="btn btn-secondary" onclick="closeDeleteAllModal()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteAllBtn" onclick="executeDeleteAll()">
+          Delete Everything Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for JSON Sync -->
+  <div class="modal-overlay" id="syncModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <h3 class="modal-title">Sync Archive JSON</h3>
+      <p class="modal-desc">
+        Export this JSON data into your mobile app or backup storage.
       </p>
       <textarea class="code-area" id="jsonArea" readonly></textarea>
       <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -532,252 +1021,777 @@
     </div>
   </div>
 
+  <!-- Modal for Editing and Updating Document -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-content" style="max-width: 540px;">
+      <h3 class="modal-title">Edit Important Document</h3>
+      <p class="modal-desc">Modify document details and save changes directly to the live cloud archive.</p>
+      
+      <form id="editForm" onsubmit="handleEditFormSubmit(event)" style="margin-top:16px;">
+        <input type="hidden" id="editId" />
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Year</label>
+            <select class="form-select" id="editYear" required>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semester</label>
+            <input type="text" class="form-input" id="editSem" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Subject Name</label>
+          <input type="text" class="form-input" id="editSubject" placeholder="e.g. Applied Physics" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Document Title</label>
+          <input type="text" class="form-input" id="editTitle" placeholder="e.g. Unit-1 Notes" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Document URL / Link</label>
+          <input type="url" class="form-input" id="editUrl" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Regulation (Optional)</label>
+            <input type="text" class="form-input" id="editRegulation" placeholder="e.g. R23/R20" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">File Size</label>
+            <input type="text" class="form-input" id="editSize" required />
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveEditBtn">
+            💾 Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Canvas Security Lock Overlay -->
+  <div class="modal-overlay" id="authLockModal" style="display:none; backdrop-filter: blur(16px); background: rgba(9, 13, 22, 0.92); z-index: 9999;">
+    <div class="modal-content" style="max-width: 420px; text-align:center;">
+      <div style="font-size: 38px; margin-bottom: 12px;">🔐</div>
+      <h3 class="modal-title">Admin Access Required</h3>
+      <p class="modal-desc">
+        Uploading, deleting, and updating university documents is restricted to administrators. Enter passkey to unlock the admin canvas.
+      </p>
+      <form onsubmit="handleAuthSubmit(event)" style="margin-top:20px;">
+        <input 
+          type="password" 
+          id="adminPasskeyInput" 
+          class="form-input" 
+          placeholder="••••••" 
+          maxlength="10" 
+          style="text-align:center; font-size:22px; letter-spacing:5px; font-weight:700;"
+          required 
+        />
+        <div id="authErrorMsg" style="color:var(--danger); font-size:12.5px; margin-top:8px; display:none;">Invalid admin passkey. Please try again.</div>
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:16px;">
+          Unlock Admin Canvas
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
   <script>
+    const SUPABASE_URL = "https://eglmujqwepvoazqjeojt.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_h_4C9-lqAQHNv3-SmvIUhA_YH2eqjpv";
+    const SUPABASE_BUCKET = "documents";
     const STORAGE_KEY = "jntua_important_pdfs_archive";
 
-    const DEFAULT_PDFS = [
-      {
-        id: "pdf-y1-1",
-        year: 1,
-        semester: "1-1",
-        title: "Linear Algebra & Calculus Formula Handbook",
-        subject: "Mathematics - I",
-        regulation: "R23/R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "1.8 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y1-2",
-        year: 1,
-        semester: "1-2",
-        title: "Engineering Physics Complete Notes & Diagrams",
-        subject: "Applied Physics",
-        regulation: "R23/R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "3.2 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y2-1",
-        year: 2,
-        semester: "2-1",
-        title: "Data Structures & Algorithms Cheat Sheet & Solved Papers",
-        subject: "Data Structures",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "2.4 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y2-2",
-        year: 2,
-        semester: "2-2",
-        title: "Operating Systems Core Concepts & Previous 5 Years Q&A",
-        subject: "Operating Systems",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "4.1 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y3-1",
-        year: 3,
-        semester: "3-1",
-        title: "Computer Networks Protocols & Numerical Problems",
-        subject: "Computer Networks",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "2.9 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y3-2",
-        year: 3,
-        semester: "3-2",
-        title: "Machine Learning & AI Comprehensive Exam Notes",
-        subject: "Artificial Intelligence",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "5.0 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y4-1",
-        year: 4,
-        semester: "4-1",
-        title: "Cloud Computing Architectures & AWS Case Studies",
-        subject: "Cloud Computing",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "3.7 MB",
-        uploadedAt: "Sep 2026"
-      },
-      {
-        id: "pdf-y4-2",
-        year: 4,
-        semester: "4-2",
-        title: "Comprehensive Viva & Technical Interview Guide",
-        subject: "Major Project / Viva",
-        regulation: "R20",
-        fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        fileSize: "2.1 MB",
-        uploadedAt: "Sep 2026"
-      }
-    ];
+    const DEFAULT_PDFS = [];
 
     let pdfs = [];
     let currentFilterYear = 0;
+    let searchQuery = "";
+    let addMode = "file";
+    let selectedFile = null;
+    let pendingDeleteTarget = null;
+    let pendingDeleteAllScope = 0;
 
-    function init() {
+    const ADMIN_PASSKEY = "630536";
+    let activeEditTarget = null;
+
+    function getSupabaseHeaders(extra = {}) {
+      return {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        ...extra
+      };
+    }
+
+    function checkAuth() {
+      const isAuth = sessionStorage.getItem("jntua_admin_auth") === "true";
+      const authModal = document.getElementById("authLockModal");
+      if (!isAuth) {
+        authModal.style.display = "flex";
+        setTimeout(() => document.getElementById("adminPasskeyInput").focus(), 100);
+        return false;
+      }
+      authModal.style.display = "none";
+      return true;
+    }
+
+    function handleAuthSubmit(event) {
+      event.preventDefault();
+      const val = document.getElementById("adminPasskeyInput").value.trim();
+      if (val === ADMIN_PASSKEY) {
+        sessionStorage.setItem("jntua_admin_auth", "true");
+        document.getElementById("authLockModal").style.display = "none";
+        document.getElementById("authErrorMsg").style.display = "none";
+        document.getElementById("adminPasskeyInput").value = "";
+        showToast("✓ Admin Canvas Unlocked", "success");
+      } else {
+        document.getElementById("authErrorMsg").style.display = "block";
+      }
+    }
+
+    function lockAdminCanvas() {
+      sessionStorage.removeItem("jntua_admin_auth");
+      document.getElementById("adminPasskeyInput").value = "";
+      checkAuth();
+      showToast("Admin Canvas Locked", "info");
+    }
+
+    async function init() {
+      setupDragDrop();
+      checkAuth();
+      await refreshFromSupabase();
+      // Auto-poll Supabase every 5 seconds with cache-busting for instant live admin updates
+      setInterval(refreshFromSupabase, 5000);
+    }
+
+    function isDummyItem(r) {
+      if (!r) return false;
+      const title = (r.title || "").toLowerCase();
+      const name = (r.fileName || r.file_name || "").toLowerCase();
+      return title.includes("automated test") || name.includes("jntua_verified_sample") || title.includes("dummy");
+    }
+
+    async function refreshFromSupabase() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/important_pdfs?select=*&order=created_at.desc`, {
+          headers: getSupabaseHeaders({
+            Accept: "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0"
+          })
+        });
+        
+        if (res.ok) {
+          const rows = await res.json();
+          if (Array.isArray(rows)) {
+            // Automatically purge any dummy or test records from database
+            rows.forEach(r => {
+              if (isDummyItem(r)) {
+                fetch(`${SUPABASE_URL}/rest/v1/important_pdfs?id=eq.${encodeURIComponent(r.id)}`, {
+                  method: "DELETE",
+                  headers: getSupabaseHeaders()
+                });
+              }
+            });
+
+            const cleanRows = rows.filter(r => !isDummyItem(r));
+            pdfs = cleanRows.map(r => ({
+              id: r.id,
+              year: r.year,
+              semester: r.semester,
+              subject: r.subject,
+              title: r.title,
+              regulation: r.regulation || "",
+              fileUrl: r.file_url,
+              fileSize: r.file_size,
+              fileName: r.file_name || r.title,
+              uploadedAt: r.uploaded_at || "Recent",
+              isLocal: false
+            }));
+            saveLocalCache();
+            render();
+            document.getElementById("cloudStatusText").innerText = "Supabase Live · Synced";
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch from Supabase, loading local fallback", err);
+      }
+
+      // Fallback to local cache
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
-          pdfs = JSON.parse(stored);
-        } catch (e) {
-          pdfs = [...DEFAULT_PDFS];
+          const parsed = JSON.parse(stored);
+          pdfs = Array.isArray(parsed) ? parsed.filter(p => !isDummyItem(p)) : [];
+        } catch {
+          pdfs = [];
         }
       } else {
-        pdfs = [...DEFAULT_PDFS];
-        save();
+        pdfs = [];
       }
       render();
+      document.getElementById("cloudStatusText").innerText = "Offline Cache";
     }
 
-    function save() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pdfs));
+    function openEditModal(id) {
+      if (!checkAuth()) return;
+      const target = pdfs.find(p => p.id === id);
+      if (!target) return;
+      activeEditTarget = target;
+      
+      document.getElementById("editId").value = target.id;
+      document.getElementById("editYear").value = String(target.year);
+      document.getElementById("editSem").value = target.semester || "1-1";
+      document.getElementById("editSubject").value = target.subject || "";
+      document.getElementById("editTitle").value = target.title || "";
+      document.getElementById("editUrl").value = target.fileUrl || "";
+      document.getElementById("editRegulation").value = target.regulation || "";
+      document.getElementById("editSize").value = target.fileSize || "—";
+      document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").style.display = "none";
+      activeEditTarget = null;
+    }
+
+    async function handleEditFormSubmit(event) {
+      event.preventDefault();
+      if (!checkAuth()) return;
+      if (!activeEditTarget) return;
+
+      const saveBtn = document.getElementById("saveEditBtn");
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Saving Changes…";
+
+      const id = document.getElementById("editId").value;
+      const year = parseInt(document.getElementById("editYear").value, 10);
+      const semester = document.getElementById("editSem").value.trim() || "1-1";
+      const subject = document.getElementById("editSubject").value.trim();
+      const title = document.getElementById("editTitle").value.trim();
+      const fileUrl = document.getElementById("editUrl").value.trim();
+      const regulation = document.getElementById("editRegulation").value.trim() || null;
+      const fileSize = document.getElementById("editSize").value.trim() || "—";
+
+      try {
+        const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/important_pdfs?id=eq.${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: getSupabaseHeaders({
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+          }),
+          body: JSON.stringify({
+            year,
+            semester,
+            subject,
+            title,
+            file_url: fileUrl,
+            regulation,
+            file_size: fileSize
+          })
+        });
+
+        if (!updateRes.ok) {
+          const errText = await updateRes.text();
+          throw new Error(`Database error (${updateRes.status}): ${errText}`);
+        }
+
+        // Update local object
+        activeEditTarget.year = year;
+        activeEditTarget.semester = semester;
+        activeEditTarget.subject = subject;
+        activeEditTarget.title = title;
+        activeEditTarget.fileUrl = fileUrl;
+        activeEditTarget.regulation = regulation || "";
+        activeEditTarget.fileSize = fileSize;
+
+        saveLocalCache();
+        closeEditModal();
+        render();
+        showToast("✓ Document updated and saved successfully! Updated for all students.", "success");
+        await refreshFromSupabase();
+      } catch (err) {
+        showToast(`Update error: ${err.message}`, "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = "💾 Save Changes";
+      }
+    }
+
+    function saveLocalCache() {
+      try {
+        // Strip any gigantic base64 payloads to preserve localStorage quota
+        const safePdfs = pdfs.map(p => {
+          if (p.fileUrl && p.fileUrl.startsWith("data:")) {
+            return { ...p, fileUrl: "about:blank" };
+          }
+          return p;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(safePdfs));
+      } catch (e) {
+        console.warn("Storage quota exceeded, preserving active memory", e);
+      }
     }
 
     function render() {
       const container = document.getElementById("pdfListContainer");
-      const filtered = currentFilterYear === 0 
+      const shownCountEl = document.getElementById("shownCount");
+
+      let filtered = currentFilterYear === 0 
         ? pdfs 
         : pdfs.filter(p => p.year === currentFilterYear);
 
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(p => 
+          (p.title && p.title.toLowerCase().includes(q)) ||
+          (p.subject && p.subject.toLowerCase().includes(q)) ||
+          (p.regulation && p.regulation.toLowerCase().includes(q))
+        );
+      }
+
+      shownCountEl.innerText = filtered.length;
+
       if (filtered.length === 0) {
         container.innerHTML = `
-          <div style="text-align:center; padding:48px 20px; background:var(--card); border:1px solid var(--hairline); border-radius:var(--radius);">
-            <div style="font-size:32px; margin-bottom:8px;">📂</div>
-            <div style="font-weight:600; font-size:15px; color:var(--ink);">No PDFs in this category</div>
-            <div style="font-size:12px; color:var(--muted); margin-top:4px;">Upload important PDFs for this year using the left panel.</div>
+          <div style="text-align:center; padding:56px 20px; background:var(--card); border:1px solid var(--hairline); border-radius:var(--radius);">
+            <div style="font-size:36px; margin-bottom:10px;">📂</div>
+            <div style="font-weight:700; font-size:16px; color:var(--ink);">No documents found</div>
+            <div style="font-size:13px; color:var(--muted); margin-top:4px;">
+              ${searchQuery ? "No academic materials matched your search query." : "Upload documents for this year using the left panel."}
+            </div>
           </div>
         `;
         return;
       }
 
-      container.innerHTML = filtered.map(p => `
-        <div class="pdf-card">
-          <div class="pdf-info">
-            <div class="pdf-meta-row">
-              <span class="pdf-badge pdf-badge-year">Year ${p.year} · Sem ${p.semester}</span>
-              ${p.regulation ? `<span class="pdf-badge">${p.regulation}</span>` : ''}
-              <span class="pdf-badge" style="font-weight:500;">${p.subject}</span>
+      container.innerHTML = filtered.map(p => {
+        const isCloud = p.fileUrl && p.fileUrl.includes("supabase.co/storage");
+        return `
+          <div class="pdf-card" id="card-${p.id}">
+            <div class="pdf-info">
+              <div class="pdf-meta-row">
+                <span class="pdf-badge pdf-badge-year">Year ${p.year} · Sem ${escapeHtml(p.semester)}</span>
+                ${p.regulation ? `<span class="pdf-badge">${escapeHtml(p.regulation)}</span>` : ''}
+                ${isCloud ? `<span class="pdf-badge pdf-badge-cloud">☁ Cloud Storage</span>` : ''}
+                <span class="pdf-badge" style="font-weight:600; color:var(--body);">${escapeHtml(p.subject)}</span>
+              </div>
+              <div class="pdf-title">${escapeHtml(p.title)}</div>
+              <div class="pdf-sub">
+                <span>📁 ${escapeHtml(p.fileSize || "—")}</span>
+                <span>•</span>
+                <span>Added ${escapeHtml(p.uploadedAt || "Recently")}</span>
+                ${p.fileName ? `<span>•</span><span style="color:var(--muted); font-family:monospace;">${escapeHtml(p.fileName)}</span>` : ''}
+              </div>
             </div>
-            <div class="pdf-title">${escapeHtml(p.title)}</div>
-            <div class="pdf-sub">${p.fileSize} · Added ${p.uploadedAt}</div>
+            <div class="pdf-actions">
+              <a href="${escapeHtml(p.fileUrl)}" target="_blank" class="action-icon-btn" title="View Document">
+                ↗
+              </a>
+              <button class="action-icon-btn" onclick="copyLink('${escapeHtml(p.fileUrl)}')" title="Copy Link">
+                📋
+              </button>
+              <button class="action-icon-btn edit" onclick="openEditModal('${p.id}')" title="Edit Document & Save Changes">
+                ✏️
+              </button>
+              <button class="action-icon-btn delete" onclick="promptDelete('${p.id}')" title="Delete Document Permanently">
+                ✕
+              </button>
+            </div>
           </div>
-          <div class="pdf-actions">
-            <a href="${escapeHtml(p.fileUrl)}" target="_blank" ${p.fileUrl.startsWith('data:') ? `download="${escapeHtml(p.fileName || p.title + '.pdf')}"` : ''} class="action-icon-btn" title="Open / Download Document">
-              ↗
-            </a>
-            <button class="action-icon-btn delete" onclick="deletePdf('${p.id}')" title="Delete PDF">
-              ✕
-            </button>
-          </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
     }
 
-    function setFilter(year, el) {
-      currentFilterYear = year;
-      document.querySelectorAll(".filter-pill").forEach(pill => pill.classList.remove("active"));
-      el.classList.add("active");
-      render();
+    function setAddMode(mode) {
+      addMode = mode;
+      document.getElementById("modeFileBtn").classList.toggle("active", mode === "file");
+      document.getElementById("modeLinkBtn").classList.toggle("active", mode === "link");
+      document.getElementById("fileUploadSection").style.display = mode === "file" ? "block" : "none";
+      document.getElementById("linkUploadSection").style.display = mode === "link" ? "block" : "none";
+      
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.innerText = mode === "file" ? "Upload & Publish to Cloud" : "Publish Link to Cloud Archive";
     }
 
     function triggerFileInput() {
       document.getElementById("fileInput").click();
     }
 
-    let selectedFileDataUrl = null;
-    let selectedFileName = null;
-
     function handleFileSelected(event) {
       const file = event.target.files[0];
       if (!file) return;
-      selectedFileName = file.name;
+      selectedFile = file;
       document.getElementById("dropLabel").innerText = file.name;
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      document.getElementById("sizeInput").value = `${sizeMb} MB`;
-      if (!document.getElementById("titleInput").value) {
-        document.getElementById("titleInput").value = file.name.replace(/\.[^.]+$/, "");
+      document.getElementById("fileReadyBadge").style.display = "inline-flex";
+      
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      document.getElementById("sizeInput").value = `${mb} MB`;
+
+      const titleInput = document.getElementById("titleInput");
+      if (!titleInput.value) {
+        titleInput.value = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
       }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        selectedFileDataUrl = e.target.result;
-        document.getElementById("urlInput").value = `stored://${file.name}`;
-      };
-      reader.readAsDataURL(file);
     }
 
-    function handleFormSubmit(event) {
+    function setupDragDrop() {
+      const zone = document.getElementById("dropZone");
+      if (!zone) return;
+      ['dragenter', 'dragover'].forEach(name => {
+        zone.addEventListener(name, (e) => {
+          e.preventDefault();
+          zone.classList.add("dragover");
+        });
+      });
+      ['dragleave', 'drop'].forEach(name => {
+        zone.addEventListener(name, (e) => {
+          e.preventDefault();
+          zone.classList.remove("dragover");
+        });
+      });
+      zone.addEventListener("drop", (e) => {
+        const dt = e.dataTransfer;
+        const file = dt.files[0];
+        if (file) {
+          selectedFile = file;
+          document.getElementById("dropLabel").innerText = file.name;
+          document.getElementById("fileReadyBadge").style.display = "inline-flex";
+          const mb = (file.size / (1024 * 1024)).toFixed(1);
+          document.getElementById("sizeInput").value = `${mb} MB`;
+          const titleInput = document.getElementById("titleInput");
+          if (!titleInput.value) {
+            titleInput.value = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+          }
+        }
+      });
+    }
+
+    async function handleFormSubmit(event) {
       event.preventDefault();
+      if (!checkAuth()) return;
       const year = parseInt(document.getElementById("yearSelect").value, 10);
-      const semester = document.getElementById("semInput").value.trim();
+      const semester = document.getElementById("semInput").value.trim() || "1-1";
       const subject = document.getElementById("subjectInput").value.trim();
       const title = document.getElementById("titleInput").value.trim();
-      const regulation = document.getElementById("regulationInput").value.trim();
-      let fileUrl = document.getElementById("urlInput").value.trim();
-      const fileSize = document.getElementById("sizeInput").value.trim();
-      let isLocal = false;
+      const regulation = document.getElementById("regulationInput").value.trim() || undefined;
+      const fileSize = document.getElementById("sizeInput").value.trim() || "—";
 
-      if (selectedFileDataUrl) {
-        fileUrl = selectedFileDataUrl;
-        isLocal = true;
-      } else if (fileUrl) {
-        const driveMatch = fileUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || fileUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        if (driveMatch && driveMatch[1]) {
-          fileUrl = `https://drive.google.com/file/d/${driveMatch[1]}/view`;
-        } else if (fileUrl.includes("dropbox.com") && fileUrl.includes("dl=0")) {
-          fileUrl = fileUrl.replace("dl=0", "raw=1");
+      let finalFileUrl = "";
+      let finalFileName = "document.pdf";
+      let finalFileType = "pdf";
+
+      const submitBtn = document.getElementById("submitBtn");
+      const progressWrap = document.getElementById("uploadProgressWrap");
+      const progressLabel = document.getElementById("uploadProgressLabel");
+
+      submitBtn.disabled = true;
+
+      try {
+        if (addMode === "file") {
+          if (!selectedFile) {
+            showToast("Please choose or drag a document first!", "error");
+            submitBtn.disabled = false;
+            return;
+          }
+
+          progressWrap.style.display = "block";
+          progressLabel.innerText = "Uploading file to Supabase storage…";
+
+          const ext = selectedFile.name.includes(".") 
+            ? selectedFile.name.slice(selectedFile.name.lastIndexOf(".")) 
+            : ".pdf";
+          const safeName = selectedFile.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 28);
+          const storagePath = `pdf_${Date.now()}_${safeName}${ext}`;
+          const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${storagePath}`;
+
+          let mime = "application/pdf";
+          if (selectedFile.name.toLowerCase().match(/\.(png|jpg|jpeg|webp)$/)) mime = "image/jpeg";
+          else if (selectedFile.name.toLowerCase().match(/\.(txt|csv|json)$/)) mime = "text/plain";
+          else if (selectedFile.name.toLowerCase().match(/\.(doc|docx)$/)) mime = "application/msword";
+
+          const uploadRes = await fetch(uploadUrl, {
+            method: "POST",
+            headers: getSupabaseHeaders({
+              "Content-Type": mime,
+              "x-upsert": "true"
+            }),
+            body: selectedFile
+          });
+
+          if (!uploadRes.ok) {
+            const errBody = await uploadRes.text();
+            throw new Error(`Cloud storage upload failed: ${errBody}`);
+          }
+
+          finalFileUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${storagePath}`;
+          finalFileName = selectedFile.name;
+        } else {
+          const rawUrl = document.getElementById("urlInput").value.trim();
+          if (!rawUrl) {
+            showToast("Please enter a valid document link!", "error");
+            submitBtn.disabled = false;
+            return;
+          }
+          finalFileUrl = rawUrl;
+          finalFileName = title;
+
+          // Normalize drive links
+          const driveMatch = finalFileUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || finalFileUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+          if (driveMatch && driveMatch[1]) {
+            finalFileUrl = `https://drive.google.com/file/d/${driveMatch[1]}/view`;
+          } else if (finalFileUrl.includes("dropbox.com") && finalFileUrl.includes("dl=0")) {
+            finalFileUrl = finalFileUrl.replace("dl=0", "raw=1");
+          }
+        }
+
+        progressLabel.innerText = "Saving record to database…";
+
+        const newId = `pdf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const dateStr = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+        // Insert into Supabase Table
+        const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/important_pdfs`, {
+          method: "POST",
+          headers: getSupabaseHeaders({
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          }),
+          body: JSON.stringify({
+            id: newId,
+            year,
+            semester,
+            subject,
+            title,
+            regulation: regulation || null,
+            file_url: finalFileUrl,
+            file_size: fileSize,
+            file_type: finalFileType,
+            file_name: finalFileName,
+            is_local: false,
+            uploaded_at: dateStr
+          })
+        });
+
+        if (!insertRes.ok) {
+          const errBody = await insertRes.text();
+          throw new Error(`Database insert failed: ${errBody}`);
+        }
+
+        const newItem = {
+          id: newId,
+          year,
+          semester,
+          subject,
+          title,
+          regulation,
+          fileUrl: finalFileUrl,
+          fileSize,
+          fileName: finalFileName,
+          isLocal: false,
+          uploadedAt: dateStr
+        };
+
+        pdfs.unshift(newItem);
+        saveLocalCache();
+        render();
+
+        // Reset form
+        document.getElementById("pdfForm").reset();
+        selectedFile = null;
+        document.getElementById("dropLabel").innerText = "Choose or drag document (PDF, DOCX, PPT, Image)";
+        document.getElementById("fileReadyBadge").style.display = "none";
+        document.getElementById("semInput").value = "1-1";
+        document.getElementById("sizeInput").value = "2.4 MB";
+        document.getElementById("regulationInput").value = "R23/R20";
+
+        showToast("✓ Document cleanly published to archive and storage!", "success");
+      } catch (err) {
+        showToast(`Error: ${err.message}`, "error");
+      } finally {
+        submitBtn.disabled = false;
+        progressWrap.style.display = "none";
+      }
+    }
+
+    function promptDelete(id) {
+      if (!checkAuth()) return;
+      const target = pdfs.find(p => p.id === id);
+      if (!target) return;
+      pendingDeleteTarget = target;
+      
+      document.getElementById("deleteModalDocTitle").innerText = target.title;
+      document.getElementById("deleteModalDocMeta").innerText = `${target.subject} · Year ${target.year} (${target.semester}) · ${target.fileSize}`;
+      document.getElementById("deleteModal").style.display = "flex";
+    }
+
+    function closeDeleteModal() {
+      document.getElementById("deleteModal").style.display = "none";
+      pendingDeleteTarget = null;
+    }
+
+    async function executeDelete() {
+      if (!pendingDeleteTarget) return;
+      const target = pendingDeleteTarget;
+      const cardEl = document.getElementById(`card-${target.id}`);
+      if (cardEl) cardEl.classList.add("deleting");
+
+      const confirmBtn = document.getElementById("confirmDeleteBtn");
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = "Deleting…";
+
+      try {
+        // 1. Delete from Supabase Database
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/important_pdfs?id=eq.${encodeURIComponent(target.id)}`, {
+          method: "DELETE",
+          headers: getSupabaseHeaders({
+            "Prefer": "return=representation"
+          })
+        });
+
+        if (!dbRes.ok) {
+          const errText = await dbRes.text();
+          throw new Error(`Database error (${dbRes.status}): ${errText}`);
+        }
+
+        // 2. Delete physical storage file if stored on Supabase
+        if (target.fileUrl) {
+          const cleanUrl = target.fileUrl.split("?")[0];
+          const match = cleanUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+          if (match) {
+            const bucket = match[1];
+            const storagePath = decodeURIComponent(match[2]);
+            await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
+              method: "DELETE",
+              headers: getSupabaseHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify({ prefixes: [storagePath] })
+            });
+          }
+        }
+
+        // 3. Remove locally and force live refresh
+        pdfs = pdfs.filter(p => p.id !== target.id);
+        saveLocalCache();
+        closeDeleteModal();
+        render();
+        showToast("✓ Document cleanly deleted from database and storage! Updated for everyone.", "success");
+        await refreshFromSupabase();
+      } catch (err) {
+        showToast(`Deletion error: ${err.message}`, "error");
+        if (cardEl) cardEl.classList.remove("deleting");
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Delete Permanently";
+      }
+    }
+
+    function promptDeleteAll(year = 0) {
+      if (!checkAuth()) return;
+      pendingDeleteAllScope = year;
+      const count = year === 0 ? pdfs.length : pdfs.filter(p => p.year === year).length;
+      if (count === 0) {
+        showToast("No documents found to delete in this category.", "info");
+        return;
+      }
+      const label = year === 0
+        ? `ALL ${count} documents across all academic years`
+        : `all ${count} documents for Year ${year}`;
+      document.getElementById("deleteAllModalScope").innerText = label;
+      document.getElementById("deleteAllModal").style.display = "flex";
+    }
+
+    function closeDeleteAllModal() {
+      document.getElementById("deleteAllModal").style.display = "none";
+    }
+
+    async function executeDeleteAll() {
+      const year = pendingDeleteAllScope;
+      const confirmBtn = document.getElementById("confirmDeleteAllBtn");
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = "Deleting all documents…";
+
+      try {
+        // 1. Fetch current items to delete physical storage files if stored on Supabase
+        const targets = year === 0 ? pdfs : pdfs.filter(p => p.year === year);
+        for (const item of targets) {
+          if (item.fileUrl) {
+            const cleanUrl = item.fileUrl.split("?")[0];
+            const match = cleanUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+            if (match) {
+              const bucket = match[1];
+              const storagePath = decodeURIComponent(match[2]);
+              await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}`, {
+                method: "DELETE",
+                headers: getSupabaseHeaders({ "Content-Type": "application/json" }),
+                body: JSON.stringify({ prefixes: [storagePath] })
+              });
+            }
+          }
+        }
+
+        // 2. Delete rows from database
+        const query = year > 0 ? `year=eq.${year}` : "id=not.is.null";
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/important_pdfs?${query}`, {
+          method: "DELETE",
+          headers: getSupabaseHeaders({
+            "Prefer": "return=representation"
+          })
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Database error (${res.status}): ${errText}`);
+        }
+
+        // 3. Update local array and force live refresh
+        pdfs = year === 0 ? [] : pdfs.filter(p => p.year !== year);
+        saveLocalCache();
+        closeDeleteAllModal();
+        render();
+        showToast("✓ All documents deleted from database and cloud storage! Updated for everyone.", "success");
+        await refreshFromSupabase();
+      } catch (err) {
+        showToast(`Bulk deletion error: ${err.message}`, "error");
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Delete Everything Permanently";
+      }
+    }
+
+    function setFilter(year, el) {
+      currentFilterYear = year;
+      document.querySelectorAll(".filter-pill").forEach(pill => pill.classList.remove("active"));
+      el.classList.add("active");
+      const delYearBtn = document.getElementById("deleteFilteredYearBtn");
+      if (delYearBtn) {
+        if (year > 0) {
+          delYearBtn.style.display = "inline-flex";
+          delYearBtn.innerText = `🗑️ Delete Year ${year} Documents`;
+        } else {
+          delYearBtn.style.display = "none";
         }
       }
-
-      const newPdf = {
-        id: `pdf-${Date.now()}`,
-        year,
-        semester,
-        subject,
-        title,
-        regulation,
-        fileUrl,
-        fileSize,
-        fileName: selectedFileName || "Document.pdf",
-        isLocal,
-        uploadedAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })
-      };
-
-      pdfs.unshift(newPdf);
-      save();
-      render();
-      event.target.reset();
-      selectedFileDataUrl = null;
-      selectedFileName = null;
-      document.getElementById("dropLabel").innerText = "Choose or drag a PDF document";
-      alert("Important PDF successfully added to archive!");
-    }
-
-    function deletePdf(id) {
-      if (!confirm("Are you sure you want to delete this PDF from the archive?")) return;
-      pdfs = pdfs.filter(p => p.id !== id);
-      save();
       render();
     }
 
-    function resetDefaults() {
-      if (!confirm("Reset to default curated JNTUA PDFs?")) return;
-      pdfs = [...DEFAULT_PDFS];
-      save();
+    function handleSearch(event) {
+      searchQuery = event.target.value.trim();
       render();
     }
 
@@ -794,11 +1808,37 @@
       const area = document.getElementById("jsonArea");
       area.select();
       navigator.clipboard.writeText(area.value);
-      alert("JSON copied to clipboard! You can paste it into the mobile app storage.");
+      showToast("JSON copied to clipboard!", "success");
+    }
+
+    function copyLink(url) {
+      navigator.clipboard.writeText(url);
+      showToast("Document link copied to clipboard!", "success");
+    }
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.classList.add("show");
+      });
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
     }
 
     function escapeHtml(str) {
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return String(str || "")
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     window.onload = init;

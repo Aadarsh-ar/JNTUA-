@@ -12,11 +12,14 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState as RNAppState,
   BackHandler,
   FlatList,
   Image,
+  Linking,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,7 +28,6 @@ import {
   ToastAndroid,
   TouchableOpacity,
   View,
-  Linking,
 } from "react-native";
 import type { GestureResponderEvent, StyleProp, TextStyle, TouchableOpacityProps, ViewStyle } from "react-native";
 import type { WebView as WebViewType } from "react-native-webview";
@@ -33,6 +35,7 @@ import { WebView, WebViewMessageEvent, WebViewNavigation } from "react-native-we
 import * as SplashScreen from "expo-splash-screen";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { AD_CONFIG } from "./utils/adConfig";
 import { BannerAdWrapper } from "./utils/BannerAdWrapper";
 import { PopunderAdWrapper } from "./utils/PopunderAdWrapper";
 import {
@@ -57,15 +60,16 @@ import {
   DocumentFileType,
   loadImportantPdfs,
   addImportantPdf,
+  updateImportantPdf,
   deleteImportantPdf,
+  deleteAllImportantPdfs,
   resetToDefaultPdfs,
-  storeLocalDocument,
   detectFileType,
   clearCorruptedPdfs,
   readDocumentAsBase64,
   buildPdfJsHtml,
   buildImageHtml,
-  testPdfUploadAndStore,
+  buildTextHtml,
   extractGoogleDriveFileId,
   getGoogleDrivePreviewUrl,
   getGoogleDriveDownloadUrl,
@@ -421,6 +425,8 @@ export default function App() {
   const { checkForUpdate } = update;
   const { AdsterrRectModal } = useAppOpenAd(state.isSplashDismissed);
   const { tryShowInterstitial, InterstitialModal } = useInterstitialAd();
+  const [popunderTrigger, setPopunderTrigger] = useState(0);
+  const triggerPopunder = useCallback(() => setPopunderTrigger((prev) => prev + 1), []);
 
   /* ------------------------------------------------------------------ */
   /*  Navigation & Important PDFs State                                 */
@@ -438,6 +444,7 @@ export default function App() {
   const [viewingHtml, setViewingHtml] = useState<string | null>(null);
   const [isViewerLoading, setIsViewerLoading] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
+  const [deletingPdfId, setDeletingPdfId] = useState<string | null>(null);
   const pdfWebViewRef = useRef<WebViewType | null>(null);
 
   // New PDF Form fields
@@ -453,6 +460,20 @@ export default function App() {
   const [pickedFileName, setPickedFileName] = useState<string | null>(null);
   const [pickedFileUri, setPickedFileUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPdfRefreshing, setIsPdfRefreshing] = useState(false);
+
+  const refreshPdfArchive = useCallback(async () => {
+    const synced = await syncPdfsWithSupabase();
+    if (synced !== null) {
+      setPdfList(synced);
+    }
+  }, []);
+
+  const handleRefreshPdfs = useCallback(async () => {
+    setIsPdfRefreshing(true);
+    await refreshPdfArchive();
+    setIsPdfRefreshing(false);
+  }, [refreshPdfArchive]);
 
   // Load Important PDFs on mount and sync with Supabase cloud
   useEffect(() => {
@@ -462,12 +483,33 @@ export default function App() {
       if (mounted) setPdfList(items);
 
       const synced = await syncPdfsWithSupabase();
-      if (mounted && synced) {
+      if (mounted && synced !== null) {
         setPdfList(synced);
       }
     })();
     return () => { mounted = false; };
   }, []);
+
+  // When switching to the Important PDFs tab, immediately sync and poll every 5 seconds so admin deletions reflect live
+  useEffect(() => {
+    if (activeTab === "pdfs") {
+      void refreshPdfArchive();
+      const interval = setInterval(() => {
+        void refreshPdfArchive();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, refreshPdfArchive]);
+
+  // Sync archive whenever the application becomes active in foreground
+  useEffect(() => {
+    const subscription = RNAppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void refreshPdfArchive();
+      }
+    });
+    return () => subscription.remove();
+  }, [refreshPdfArchive]);
 
   useEffect(() => {
     if (shouldCheckOnMount()) void checkForUpdate();
@@ -499,11 +541,13 @@ export default function App() {
   const handleFullReset = useCallback(() => dispatch({ type: "RESET" }), []);
   const handleCloseModal = useCallback(() => {
     dispatch({ type: "SET_SELECTED_SUBJECT", data: null });
+    triggerPopunder();
     tryShowInterstitial();
-  }, [tryShowInterstitial]);
+  }, [tryShowInterstitial, triggerPopunder]);
   const handlePreviousAttendance = useCallback(() => {
+    triggerPopunder();
     if (previousResult) dispatch({ type: "HYDRATE_PREVIOUS_RESULT", data: previousResult });
-  }, [previousResult]);
+  }, [previousResult, triggerPopunder]);
 
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     const { url, loading } = navState;
@@ -544,6 +588,9 @@ export default function App() {
       const nav = navModalRef.current;
       if (nav.viewingPdf) {
         setViewingPdf(null);
+        setViewingHtml(null);
+        setViewerError(null);
+        tryShowInterstitial();
         return true;
       }
       if (nav.showAddPdfModal) {
@@ -607,7 +654,7 @@ export default function App() {
         window.removeEventListener("popstate", popstateHandler);
       }
     };
-  }, []);
+  }, [tryShowInterstitial]);
 
   /* Aggregation math */
   const { overallClasses, overallPresent, overallAbsent } = subjectsData.reduce(
@@ -668,7 +715,16 @@ export default function App() {
   /* ------------------------------------------------------------------ */
   /*  PDF Actions                                                       */
   /* ------------------------------------------------------------------ */
+  const handleCloseViewer = useCallback(() => {
+    setViewingPdf(null);
+    setViewingHtml(null);
+    setViewerError(null);
+    tryShowInterstitial();
+  }, [tryShowInterstitial]);
+
   const handleOpenPdf = useCallback(async (item: ImportantPdfItem) => {
+    triggerPopunder();
+    tryShowInterstitial();
     setViewingPdf(item);
     setViewerError(null);
     setIsViewerLoading(true);
@@ -687,6 +743,19 @@ export default function App() {
         } else {
           setViewingHtml(buildImageHtml(item.fileUrl, false));
         }
+      } else if (fileType === "text") {
+        if (isLocal) {
+          const content = await FileSystem.readAsStringAsync(item.fileUrl);
+          setViewingHtml(buildTextHtml(content, item.title));
+        } else {
+          try {
+            const resp = await fetch(item.fileUrl);
+            const content = await resp.text();
+            setViewingHtml(buildTextHtml(content, item.title));
+          } catch {
+            setViewingHtml(null);
+          }
+        }
       } else if (isLocal) {
         // Local PDF or document: Read to Base64 and render in-app with PDF.js
         try {
@@ -694,7 +763,7 @@ export default function App() {
           setViewingHtml(buildPdfJsHtml(b64, item.title));
         } catch {
           setViewerError(
-            "Could not read local document. You can open it using an external viewer app."
+            "Could not read local document. Please verify the document file is intact."
           );
         }
       } else {
@@ -708,7 +777,7 @@ export default function App() {
             const b64 = await readDocumentAsBase64(cachedUri);
             setViewingHtml(buildPdfJsHtml(b64, item.title));
           } catch {
-            // If direct download fails (e.g. view-only or auth needed), use Google Drive native embed preview
+            // Fallback to in-app embedded viewer
             setViewingHtml(null);
           }
         } else if (item.fileUrl.startsWith("http")) {
@@ -718,7 +787,7 @@ export default function App() {
             const b64 = await readDocumentAsBase64(cachedUri);
             setViewingHtml(buildPdfJsHtml(b64, item.title));
           } catch {
-            // Fallback to WebView
+            // Fallback to in-app embedded viewer
             setViewingHtml(null);
           }
         } else {
@@ -731,28 +800,7 @@ export default function App() {
     } finally {
       setIsViewerLoading(false);
     }
-  }, []);
-
-  const handleOpenExternal = useCallback(async () => {
-    if (!viewingPdf) return;
-    try {
-      if (viewingPdf.fileUrl.startsWith("http")) {
-        const driveId = extractGoogleDriveFileId(viewingPdf.fileUrl);
-        const externalUrl = driveId
-          ? `https://drive.google.com/file/d/${driveId}/view`
-          : viewingPdf.fileUrl;
-        await Linking.openURL(externalUrl);
-      } else {
-        const contentUri = await FileSystem.getContentUriAsync(viewingPdf.fileUrl);
-        await Linking.openURL(contentUri);
-      }
-    } catch {
-      Alert.alert(
-        "Open Document",
-        "Could not launch an external viewer app for this file on your device."
-      );
-    }
-  }, [viewingPdf]);
+  }, [tryShowInterstitial, triggerPopunder]);
 
   const handleVerifyPin = useCallback(() => {
     if (pinInput.trim() === ADMIN_PASSKEY) {
@@ -769,16 +817,8 @@ export default function App() {
   const handlePickFile = useCallback(async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        // Allow PDFs, Word docs, PowerPoints, images, and text files
-        type: [
-          "application/pdf",
-          "image/*",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "application/vnd.ms-powerpoint",
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-          "text/plain",
-        ],
+        // Allow any type of documents (PDF, Word, PPT, Excel, Images, Text, etc.)
+        type: "*/*",
         copyToCacheDirectory: true,
         multiple: false,
       });
@@ -822,34 +862,24 @@ export default function App() {
       let finalFileSize = newPdfSize.trim() || "—";
       let finalFileType: DocumentFileType = "pdf";
       let finalFileName = pickedFileName ?? "Document";
-      let isLocal = false;
 
       if (uploadMode === "file" && pickedFileUri) {
-        // Attempt cloud upload to Supabase Storage first for cloud distribution
+        // Cloud upload to Supabase Storage for universal student distribution
         const sbUpload = await uploadPdfToSupabaseStorage(
           pickedFileUri,
           pickedFileName || "document.pdf"
         );
-        if (sbUpload) {
-          finalFileUrl = sbUpload.publicUrl;
-          finalFileSize = newPdfSize.trim() || "—";
-          finalFileType = detectFileType(pickedFileName || "document.pdf");
-          finalFileName = pickedFileName ?? "Document";
-          isLocal = false;
-        } else {
-          // Fallback to storing locally in device document database
-          const stored = await storeLocalDocument(pickedFileUri, pickedFileName || "document.pdf");
-          finalFileUrl = stored.persistentUri;
-          finalFileSize = stored.fileSize;
-          finalFileType = stored.fileType;
-          finalFileName = stored.fileName;
-          isLocal = true;
+        if (!sbUpload) {
+          throw new Error("Could not upload document to Supabase cloud storage. Please check connection.");
         }
+        finalFileUrl = sbUpload.publicUrl;
+        finalFileSize = newPdfSize.trim() || "—";
+        finalFileType = detectFileType(pickedFileName || "document.pdf");
+        finalFileName = pickedFileName ?? "Document";
       } else {
         const norm = normalizeDocumentUrl(finalFileUrl);
         finalFileUrl = norm.url;
         finalFileType = detectFileType(finalFileUrl);
-        isLocal = false;
       }
 
       const updated = await addImportantPdf({
@@ -862,7 +892,7 @@ export default function App() {
         fileSize: finalFileSize,
         fileType: finalFileType,
         fileName: finalFileName,
-        isLocal,
+        isLocal: false,
       });
 
       setPdfList(updated);
@@ -876,9 +906,7 @@ export default function App() {
       setUploadMode("file");
       Alert.alert(
         "Published Successfully",
-        isLocal
-          ? "Document saved to your local offline archive."
-          : "Document uploaded to Supabase cloud archive for all students."
+        "Document uploaded to Supabase cloud archive for all students."
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to store document";
@@ -899,23 +927,62 @@ export default function App() {
     newPdfRegulation,
   ]);
 
-  const handleDeletePdf = useCallback(async (id: string) => {
+  const [isDeletingAllPdfs, setIsDeletingAllPdfs] = useState(false);
+
+  const handleDeletePdf = useCallback((id: string, title?: string) => {
     Alert.alert(
       "Confirm Deletion",
-      "Remove this PDF document from the university archive?",
+      `Are you sure you want to remove "${title || "this document"}" from the cloud archive? It will be deleted from the database and storage for all students.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            const updated = await deleteImportantPdf(id);
-            setPdfList(updated);
+            setDeletingPdfId(id);
+            try {
+              const updated = await deleteImportantPdf(id);
+              setPdfList(updated);
+              Alert.alert("Deleted Cleanly", "Document has been permanently removed from archive and cloud storage.");
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : "Deletion failed";
+              Alert.alert("Error", `Could not delete document: ${msg}`);
+            } finally {
+              setDeletingPdfId(null);
+            }
           },
         },
       ]
     );
   }, []);
+
+  const handleDeleteAllPdfs = useCallback(() => {
+    const scopeLabel = selectedYear === 0 ? "all documents" : `all Year ${selectedYear} documents`;
+    Alert.alert(
+      "Delete All Documents",
+      `Are you sure you want to permanently delete ${scopeLabel} from the cloud database and storage? All students will immediately see this updated everywhere.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingAllPdfs(true);
+            try {
+              const updated = await deleteAllImportantPdfs(selectedYear === 0 ? undefined : selectedYear);
+              setPdfList(updated);
+              Alert.alert("Archive Cleared", `Successfully removed ${scopeLabel} from cloud storage and database.`);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : "Deletion failed";
+              Alert.alert("Error", `Could not clear archive: ${msg}`);
+            } finally {
+              setIsDeletingAllPdfs(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [selectedYear]);
 
   const handleResetDefaults = useCallback(async () => {
     Alert.alert(
@@ -934,17 +1001,72 @@ export default function App() {
     );
   }, []);
 
-  const handleRunStorageTest = useCallback(async () => {
-    Alert.alert("Testing Document Database", "Running end-to-end PDF upload & storage test…");
-    const result = await testPdfUploadAndStore();
-    if (result.success) {
-      const items = await loadImportantPdfs();
-      setPdfList(items);
-      Alert.alert("Test Passed! ✅", result.message);
-    } else {
-      Alert.alert("Test Failed ❌", result.message);
-    }
+  // Edit Document state for Admin
+  const [editingPdf, setEditingPdf] = useState<ImportantPdfItem | null>(null);
+  const [editPdfYear, setEditPdfYear] = useState<1 | 2 | 3 | 4>(1);
+  const [editPdfSem, setEditPdfSem] = useState("1-1");
+  const [editPdfSubject, setEditPdfSubject] = useState("");
+  const [editPdfTitle, setEditPdfTitle] = useState("");
+  const [editPdfRegulation, setEditPdfRegulation] = useState("");
+  const [editPdfUrl, setEditPdfUrl] = useState("");
+  const [editPdfSize, setEditPdfSize] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleStartEditPdf = useCallback((item: ImportantPdfItem) => {
+    setEditingPdf(item);
+    setEditPdfYear(item.year);
+    setEditPdfSem(item.semester || "1-1");
+    setEditPdfSubject(item.subject || "");
+    setEditPdfTitle(item.title || "");
+    setEditPdfRegulation(item.regulation || "");
+    setEditPdfUrl(item.fileUrl || "");
+    setEditPdfSize(item.fileSize || "—");
   }, []);
+
+  const handleSaveEditPdf = useCallback(async () => {
+    if (!editingPdf) return;
+    if (!editPdfSubject.trim() || !editPdfTitle.trim()) {
+      Alert.alert("Incomplete Details", "Please provide Subject Name and Document Title.");
+      return;
+    }
+    if (!editPdfUrl.trim()) {
+      Alert.alert("Missing URL", "Please provide a valid document link.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const updatedItem: ImportantPdfItem = {
+        ...editingPdf,
+        year: editPdfYear,
+        semester: editPdfSem.trim() || "1-1",
+        subject: editPdfSubject.trim(),
+        title: editPdfTitle.trim(),
+        regulation: editPdfRegulation.trim() || undefined,
+        fileUrl: editPdfUrl.trim(),
+        fileSize: editPdfSize.trim() || "—",
+      };
+
+      const updatedList = await updateImportantPdf(updatedItem);
+      setPdfList(updatedList);
+      setEditingPdf(null);
+      Alert.alert("Updated Cleanly", "Document changes saved to cloud database for all students.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Update failed";
+      Alert.alert("Error", `Could not update document: ${msg}`);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }, [
+    editingPdf,
+    editPdfYear,
+    editPdfSem,
+    editPdfSubject,
+    editPdfTitle,
+    editPdfRegulation,
+    editPdfUrl,
+    editPdfSize,
+  ]);
 
   const handleClearCorrupted = useCallback(async () => {
     Alert.alert(
@@ -1048,6 +1170,9 @@ export default function App() {
               <TouchableOpacity style={styles.errorBtn} onPress={handleFullReset}>
                 <Text style={styles.errorBtnText}>Try again</Text>
               </TouchableOpacity>
+              <View style={styles.overlayAdWrap}>
+                <BannerAdWrapper size="banner" />
+              </View>
             </View>
           </View>
         )}
@@ -1065,6 +1190,13 @@ export default function App() {
             <View style={styles.syncStatusBadge}>
               <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.success} style={{ marginRight: 6 }} />
               <Text style={styles.syncStatusText}>Encrypted device-only session</Text>
+            </View>
+            <View style={styles.syncAdCard}>
+              <View style={styles.adBadgeRow}>
+                <View style={styles.adBadgeDot} />
+                <Text style={styles.adBadgeText}>SPONSORED</Text>
+              </View>
+              <BannerAdWrapper size="rectangle" />
             </View>
           </View>
         )}
@@ -1085,6 +1217,9 @@ export default function App() {
               <BouncyButton style={styles.errorBtn} onPress={handleFullReset}>
                 <Text style={styles.errorBtnText}>Retry Extraction</Text>
               </BouncyButton>
+              <View style={styles.overlayAdWrap}>
+                <BannerAdWrapper size="banner" />
+              </View>
             </View>
           </View>
         )}
@@ -1219,6 +1354,15 @@ export default function App() {
                     </View>
                   </View>
 
+                  {/* Mid-Dashboard Sponsored Banner */}
+                  <View style={styles.dashboardMidAdCard}>
+                    <View style={styles.adBadgeRow}>
+                      <View style={styles.adBadgeDot} />
+                      <Text style={styles.adBadgeText}>SPONSORED</Text>
+                    </View>
+                    <BannerAdWrapper size="banner" />
+                  </View>
+
                   <View style={styles.listHead}>
                     <Text style={styles.eyebrowSm}>COURSES & LABS</Text>
                     <View style={styles.subjectCountBadge}>
@@ -1228,23 +1372,45 @@ export default function App() {
                 </View>
               }
               ListFooterComponent={
-                <View style={styles.footBand}>
-                  <View style={styles.footIconWrap}>
-                    <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+                <View>
+                  {/* High CPM Rectangle Ad at bottom of dashboard */}
+                  <View style={styles.dashboardBottomAdCard}>
+                    <View style={styles.adBadgeRow}>
+                      <View style={styles.adBadgeDot} />
+                      <Text style={styles.adBadgeText}>SPONSORED</Text>
+                    </View>
+                    <BannerAdWrapper size="rectangle" />
                   </View>
-                  <Text style={styles.footTitle}>JNTUA Attendance</Text>
-                  <Text style={styles.footSub}>Calculations are based on the official 75% university threshold.</Text>
+
+                  <View style={styles.footBand}>
+                    <View style={styles.footIconWrap}>
+                      <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.footTitle}>JNTUA Attendance</Text>
+                    <Text style={styles.footSub}>Calculations are based on the official 75% university threshold.</Text>
+                  </View>
                 </View>
               }
               renderItem={({ item, index }) => (
-                <AnimatedSubjectCard
-                  item={item}
-                  index={index}
-                  dispatch={dispatch}
-                  getAttendanceColor={getAttendanceColor}
-                  calculateCanSkip={calculateCanSkip}
-                  calculateClassesToReach75={calculateClassesToReach75}
-                />
+                <View>
+                  <AnimatedSubjectCard
+                    item={item}
+                    index={index}
+                    dispatch={dispatch}
+                    getAttendanceColor={getAttendanceColor}
+                    calculateCanSkip={calculateCanSkip}
+                    calculateClassesToReach75={calculateClassesToReach75}
+                  />
+                  {(index === 2 || (index > 2 && (index + 1) % 4 === 0 && index !== subjectsData.length - 1)) && (
+                    <View style={styles.inFeedAdCard}>
+                      <View style={styles.adBadgeRow}>
+                        <View style={styles.adBadgeDot} />
+                        <Text style={styles.adBadgeText}>SPONSORED</Text>
+                      </View>
+                      <BannerAdWrapper size="banner" />
+                    </View>
+                  )}
+                </View>
               )}
             />
           </FadeInView>
@@ -1259,7 +1425,11 @@ export default function App() {
           {/* Header */}
           <View style={styles.pdfHeaderRow}>
             <View>
-              <Text style={styles.eyebrowSm}>ACADEMIC ARCHIVE</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.eyebrowSm}>ACADEMIC ARCHIVE</Text>
+                <View style={styles.liveIndicatorDot} />
+                <Text style={styles.liveIndicatorText}>LIVE</Text>
+              </View>
               <Text style={styles.vogueHeading}>Important PDFs</Text>
             </View>
 
@@ -1279,6 +1449,22 @@ export default function App() {
                   >
                     <Ionicons name="add" size={16} color={COLORS.onDark} />
                     <Text style={styles.addPdfBtnText}>Add PDF</Text>
+                  </BouncyButton>
+                  <BouncyButton
+                    style={styles.purgeArchiveBtn}
+                    onPress={handleDeleteAllPdfs}
+                    disabled={isDeletingAllPdfs}
+                  >
+                    {isDeletingAllPdfs ? (
+                      <ActivityIndicator size="small" color="#DC2626" />
+                    ) : (
+                      <>
+                        <Ionicons name="trash" size={13} color="#DC2626" style={{ marginRight: 3 }} />
+                        <Text style={styles.purgeArchiveBtnText}>
+                          {selectedYear === 0 ? "Delete All" : `Del Y${selectedYear}`}
+                        </Text>
+                      </>
+                    )}
                   </BouncyButton>
                 </>
               ) : (
@@ -1332,19 +1518,39 @@ export default function App() {
             </ScrollView>
           </View>
 
+          {/* High CPM Adsterra Banner inside Important Documents tab */}
+          <View style={styles.pdfTabBannerAd}>
+            <BannerAdWrapper />
+          </View>
+
           {/* PDF Documents List */}
           <FlatList
             data={filteredPdfs}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={isPdfRefreshing}
+                onRefresh={handleRefreshPdfs}
+                tintColor={COLORS.primary}
+                colors={[COLORS.primary]}
+              />
+            }
             ListEmptyComponent={
               <View style={styles.emptyPdfState}>
                 <Ionicons name="document-text-outline" size={38} color={COLORS.mutedSoft} style={{ marginBottom: 10 }} />
-                <Text style={styles.emptyPdfTitle}>No PDFs Found</Text>
+                <Text style={styles.emptyPdfTitle}>No PDFs in Archive</Text>
                 <Text style={styles.emptyPdfSub}>
-                  {pdfSearch ? "Try adjusting your search query." : "No documents uploaded for this year category yet."}
+                  {pdfSearch
+                    ? "No academic materials matched your search query."
+                    : selectedYear === 0
+                    ? "Curated and controlled by Admin • Documents published by Admin will appear here live for everyone."
+                    : `No documents available for Year ${selectedYear}.`}
                 </Text>
+                <View style={styles.emptyPdfAdWrap}>
+                  <BannerAdWrapper size="rectangle" />
+                </View>
                 {isAdminMode && (
                   <BouncyButton style={[styles.addPdfBtn, { marginTop: 14 }]} onPress={() => setShowAddPdfModal(true)}>
                     <Text style={styles.addPdfBtnText}>+ Upload First Document</Text>
@@ -1352,50 +1558,85 @@ export default function App() {
                 )}
               </View>
             }
-            renderItem={({ item }) => (
-              <View style={styles.pdfCard}>
-                <View style={styles.pdfCardMetaRow}>
-                  <View style={styles.yearTag}>
-                    <Text style={styles.yearTagText}>Year {item.year} · Sem {item.semester}</Text>
+            ListFooterComponent={
+              filteredPdfs.length > 0 ? (
+                <View style={styles.pdfListFooterAd}>
+                  <View style={styles.adBadgeRow}>
+                    <View style={styles.adBadgeDot} />
+                    <Text style={styles.adBadgeText}>SPONSORED</Text>
                   </View>
-                  {!!item.regulation && (
-                    <View style={styles.regTag}>
-                      <Text style={styles.regTagText}>{item.regulation}</Text>
-                    </View>
-                  )}
-                  {item.isLocal && (
-                    <View style={styles.localTag}>
-                      <Ionicons name="shield-checkmark" size={10} color="#059669" style={{ marginRight: 3 }} />
-                      <Text style={styles.localTagText}>STORED</Text>
-                    </View>
-                  )}
-                  <Text style={styles.pdfSubjectText} numberOfLines={1}>{item.subject}</Text>
+                  <BannerAdWrapper size="rectangle" />
                 </View>
-
-                <Text style={styles.pdfCardTitle} numberOfLines={2}>{item.title}</Text>
-
-                <View style={styles.pdfCardFooter}>
-                  <Text style={styles.pdfMetaInfo}>{item.fileSize} • Added {item.uploadedAt}</Text>
-                  
-                  <View style={styles.pdfCardActions}>
-                    <BouncyButton
-                      style={styles.openPdfBtn}
-                      onPress={() => handleOpenPdf(item)}
-                    >
-                      <Ionicons name="eye-outline" size={13} color={COLORS.onDark} style={{ marginRight: 5 }} />
-                      <Text style={styles.openPdfBtnText}>View</Text>
-                    </BouncyButton>
-
-                    {isAdminMode && (
-                      <TouchableOpacity
-                        style={styles.deletePdfBtn}
-                        onPress={() => handleDeletePdf(item.id)}
-                      >
-                        <Ionicons name="trash-outline" size={15} color={COLORS.error} />
-                      </TouchableOpacity>
+              ) : null
+            }
+            renderItem={({ item, index }) => (
+              <View>
+                <View style={styles.pdfCard}>
+                  <View style={styles.pdfCardMetaRow}>
+                    <View style={styles.yearTag}>
+                      <Text style={styles.yearTagText}>Year {item.year} · Sem {item.semester}</Text>
+                    </View>
+                    {!!item.regulation && (
+                      <View style={styles.regTag}>
+                        <Text style={styles.regTagText}>{item.regulation}</Text>
+                      </View>
                     )}
+                    {item.isLocal && (
+                      <View style={styles.localTag}>
+                        <Ionicons name="shield-checkmark" size={10} color="#059669" style={{ marginRight: 3 }} />
+                        <Text style={styles.localTagText}>STORED</Text>
+                      </View>
+                    )}
+                    <Text style={styles.pdfSubjectText} numberOfLines={1}>{item.subject}</Text>
+                  </View>
+
+                  <Text style={styles.pdfCardTitle} numberOfLines={2}>{item.title}</Text>
+
+                  <View style={styles.pdfCardFooter}>
+                    <Text style={styles.pdfMetaInfo}>{item.fileSize} • Added {item.uploadedAt}</Text>
+                    
+                    <View style={styles.pdfCardActions}>
+                      <BouncyButton
+                        style={styles.openPdfBtn}
+                        onPress={() => handleOpenPdf(item)}
+                      >
+                        <Ionicons name="eye-outline" size={13} color={COLORS.onDark} style={{ marginRight: 5 }} />
+                        <Text style={styles.openPdfBtnText}>View</Text>
+                      </BouncyButton>
+
+                      {isAdminMode && (
+                        <>
+                          <TouchableOpacity
+                            style={styles.editPdfBtn}
+                            onPress={() => handleStartEditPdf(item)}
+                          >
+                            <Ionicons name="create-outline" size={15} color={COLORS.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.deletePdfBtn}
+                            disabled={deletingPdfId === item.id}
+                            onPress={() => handleDeletePdf(item.id, item.title)}
+                          >
+                            {deletingPdfId === item.id ? (
+                              <ActivityIndicator size="small" color={COLORS.error} />
+                            ) : (
+                              <Ionicons name="trash-outline" size={15} color={COLORS.error} />
+                            )}
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
                   </View>
                 </View>
+                {(index === 2 || (index > 2 && (index + 1) % 4 === 0 && index !== filteredPdfs.length - 1)) && (
+                  <View style={styles.inFeedAdCard}>
+                    <View style={styles.adBadgeRow}>
+                      <View style={styles.adBadgeDot} />
+                      <Text style={styles.adBadgeText}>SPONSORED</Text>
+                    </View>
+                    <BannerAdWrapper size="banner" />
+                  </View>
+                )}
               </View>
             )}
           />
@@ -1485,6 +1726,9 @@ export default function App() {
                     <View style={styles.emptyLogWrap}>
                       <Ionicons name="calendar-outline" size={28} color={COLORS.mutedSoft} style={{ marginBottom: 8 }} />
                       <Text style={styles.emptyLogText}>No individual class dates logged for this subject yet.</Text>
+                      <View style={styles.modalEmptyAdWrap}>
+                        <BannerAdWrapper size="rectangle" />
+                      </View>
                     </View>
                   }
                   renderItem={({ item }) => {
@@ -1515,6 +1759,11 @@ export default function App() {
                     );
                   }}
                 />
+
+                {/* Bottom Sticky Adsterra Banner inside Subject Date Log Modal */}
+                <View style={styles.modalSheetAdBanner}>
+                  <BannerAdWrapper size="banner" />
+                </View>
               </>
             )}
           </View>
@@ -1570,6 +1819,10 @@ export default function App() {
             <BouncyButton style={styles.adminSubmitBtn} onPress={handleVerifyPin}>
               <Text style={styles.adminSubmitBtnText}>Unlock Admin Mode</Text>
             </BouncyButton>
+
+            <View style={styles.pinModalAdWrap}>
+              <BannerAdWrapper size="banner" />
+            </View>
           </View>
         </View>
       </Modal>
@@ -1750,13 +2003,8 @@ export default function App() {
                 )}
               </BouncyButton>
 
-              {/* Maintenance & Test Tools */}
+              {/* Maintenance Tools */}
               <View style={styles.archiveAdminTools}>
-                <TouchableOpacity style={styles.adminToolBtn} onPress={handleRunStorageTest}>
-                  <Ionicons name="flash-outline" size={14} color={COLORS.ink} />
-                  <Text style={styles.adminToolBtnText}>Test PDF Upload & Store</Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity style={styles.adminToolBtn} onPress={handleClearCorrupted}>
                   <Ionicons name="trash-bin-outline" size={14} color={COLORS.body} />
                   <Text style={styles.adminToolBtnText}>Clean Broken Entries</Text>
@@ -1772,30 +2020,151 @@ export default function App() {
       </Modal>
 
       {/* ============================================================== */}
-      {/* MODAL: IN-APP DOCUMENT VIEWER (PDF.JS & OFFLINE DB VIEWER)     */}
+      {/* MODAL: EDIT IMPORTANT PDF (ADMIN)                              */}
+      {/* ============================================================== */}
+      <Modal
+        visible={!!editingPdf}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditingPdf(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setEditingPdf(null)}
+          />
+          <View style={[styles.modalSheet, { maxHeight: "92%" }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Edit Document</Text>
+                <Text style={styles.modalSub}>Update details and save to live cloud archive.</Text>
+              </View>
+              <TouchableOpacity style={styles.closeIcon} onPress={() => setEditingPdf(null)}>
+                <Ionicons name="close" size={18} color={COLORS.body} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 12 }}>
+              {/* Year Select */}
+              <Text style={styles.formLabel}>Target Year</Text>
+              <View style={styles.formYearRow}>
+                {([1, 2, 3, 4] as const).map((yr) => (
+                  <TouchableOpacity
+                    key={yr}
+                    style={[styles.formYearBtn, editPdfYear === yr && styles.formYearBtnActive]}
+                    onPress={() => setEditPdfYear(yr)}
+                  >
+                    <Text style={[styles.formYearBtnText, editPdfYear === yr && styles.formYearBtnTextActive]}>
+                      Year {yr}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Semester & Regulation */}
+              <View style={styles.formRow2}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={styles.formLabel}>Semester</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 1-1, 2-2"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    value={editPdfSem}
+                    onChangeText={setEditPdfSem}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.formLabel}>Regulation</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. R23/R20"
+                    placeholderTextColor={COLORS.mutedSoft}
+                    value={editPdfRegulation}
+                    onChangeText={setEditPdfRegulation}
+                  />
+                </View>
+              </View>
+
+              {/* Subject */}
+              <Text style={styles.formLabel}>Subject Name</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. Applied Physics"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={editPdfSubject}
+                onChangeText={setEditPdfSubject}
+              />
+
+              {/* Document Title */}
+              <Text style={styles.formLabel}>Document Title</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. Unit-1 Notes & Solved Papers"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={editPdfTitle}
+                onChangeText={setEditPdfTitle}
+              />
+
+              {/* URL */}
+              <Text style={styles.formLabel}>Document URL / Link</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="https://..."
+                placeholderTextColor={COLORS.mutedSoft}
+                autoCapitalize="none"
+                keyboardType="url"
+                value={editPdfUrl}
+                onChangeText={setEditPdfUrl}
+              />
+
+              {/* File Size */}
+              <Text style={styles.formLabel}>File Size</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="e.g. 2.4 MB"
+                placeholderTextColor={COLORS.mutedSoft}
+                value={editPdfSize}
+                onChangeText={setEditPdfSize}
+              />
+
+              <BouncyButton
+                style={[styles.adminSubmitBtn, { marginTop: 20 }]}
+                onPress={handleSaveEditPdf}
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <ActivityIndicator size="small" color={COLORS.onDark} />
+                    <Text style={styles.adminSubmitBtnText}>Saving Changes…</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.adminSubmitBtnText}>Save Changes</Text>
+                )}
+              </BouncyButton>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================== */}
+      {/* MODAL: IN-APP DOCUMENT VIEWER (VIEW ONLY - NO DOWNLOADS)       */}
       {/* ============================================================== */}
       <Modal
         visible={!!viewingPdf}
         animationType="slide"
         transparent={false}
-        onRequestClose={() => {
-          setViewingPdf(null);
-          setViewingHtml(null);
-          setViewerError(null);
-        }}
+        onRequestClose={handleCloseViewer}
       >
         <View style={styles.pdfViewerContainer}>
           <StatusBar barStyle="dark-content" backgroundColor={COLORS.surfaceCard} />
 
-          {/* Viewer Top Bar */}
+          {/* Viewer Top Bar (View Only - No external download buttons) */}
           <View style={styles.pdfViewerHeader}>
             <TouchableOpacity
               style={styles.pdfViewerBackBtn}
-              onPress={() => {
-                setViewingPdf(null);
-                setViewingHtml(null);
-                setViewerError(null);
-              }}
+              onPress={handleCloseViewer}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="arrow-back" size={20} color={COLORS.ink} />
@@ -1811,15 +2180,6 @@ export default function App() {
             </View>
 
             <View style={styles.pdfViewerActions}>
-              <TouchableOpacity
-                style={styles.pdfViewerActionBtn}
-                onPress={handleOpenExternal}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityLabel="Open in External App"
-              >
-                <Ionicons name="open-outline" size={18} color={COLORS.ink} />
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.pdfViewerActionBtn}
                 onPress={() => {
@@ -1857,12 +2217,9 @@ export default function App() {
                     >
                       <Text style={styles.pdfViewerRetryBtnText}>Retry</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.pdfViewerRetryBtn, { backgroundColor: COLORS.canvas, borderWidth: 1, borderColor: COLORS.hairline }]}
-                      onPress={handleOpenExternal}
-                    >
-                      <Text style={[styles.pdfViewerRetryBtnText, { color: COLORS.ink }]}>External Viewer</Text>
-                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.viewerErrorAdWrap}>
+                    <BannerAdWrapper size="rectangle" />
                   </View>
                 </View>
               ) : viewingHtml ? (
@@ -1876,6 +2233,19 @@ export default function App() {
                   originWhitelist={["*"]}
                   scalesPageToFit={true}
                   startInLoadingState={true}
+                  setSupportMultipleWindows={false}
+                  onShouldStartLoadWithRequest={(request) => {
+                    if (
+                      request.url.startsWith("http") &&
+                      !request.url.includes("cdnjs.cloudflare.com") &&
+                      !request.url.includes("profitableratecpmnetwork.com") &&
+                      request.url !== "about:blank"
+                    ) {
+                      void Linking.openURL(request.url);
+                      return false;
+                    }
+                    return true;
+                  }}
                   renderLoading={() => (
                     <View style={styles.pdfViewerLoading}>
                       <ActivityIndicator size="large" color={COLORS.primary} />
@@ -1902,15 +2272,44 @@ export default function App() {
                       startInLoadingState={true}
                       scalesPageToFit={true}
                       setSupportMultipleWindows={false}
+                      injectedJavaScript={`
+                        (function() {
+                          var s = document.createElement('style');
+                          s.textContent = '.ndfHFb-c4YZDc-Wrql6b, .ndfHFb-c4YZDc-sKqlvd, [aria-label*="pop-out"], [aria-label*="download"], [aria-label*="Download"], [role="button"][title*="Pop-out"], [role="button"][title*="pop-out"], .drive-viewer-toolstrip-download { display: none !important; }';
+                          document.head.appendChild(s);
+                          document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+                          if (!document.getElementById('adsterra-popunder-tag')) {
+                            var p = document.createElement('script');
+                            p.id = 'adsterra-popunder-tag';
+                            p.async = true;
+                            p.setAttribute('data-cfasync', 'false');
+                            p.src = '${AD_CONFIG.popunderSrc}';
+                            document.head.appendChild(p);
+                            var c = document.createElement('div');
+                            c.id = '${AD_CONFIG.popunderContainerId}';
+                            document.body.appendChild(c);
+                          }
+                        })();
+                        true;
+                      `}
                       onShouldStartLoadWithRequest={(request) => {
                         if (
-                          request.url.includes("docs.google.com") ||
-                          request.url.includes("drive.google.com") ||
-                          request.url.includes("google.com") ||
-                          request.url.startsWith("http://") ||
-                          request.url.startsWith("https://")
+                          request.url.includes("docs.google.com/gview") ||
+                          request.url.includes("drive.google.com/file") ||
+                          request.url.includes("drive.google.com/open") ||
+                          request.url.startsWith("data:") ||
+                          request.url.startsWith("about:")
                         ) {
                           return true;
+                        }
+                        if (
+                          request.url.startsWith("http") &&
+                          !request.url.includes("google.com") &&
+                          !request.url.includes("profitableratecpmnetwork.com")
+                        ) {
+                          void Linking.openURL(request.url);
+                          return false;
                         }
                         return false;
                       }}
@@ -1925,14 +2324,19 @@ export default function App() {
                           <Ionicons name="alert-circle-outline" size={38} color={COLORS.error} />
                           <Text style={styles.pdfViewerErrorTitle}>Unable to Display Online Document</Text>
                           <Text style={styles.pdfViewerErrorSub}>
-                            This online document could not be previewed in-app. You can open it directly in your browser or document viewer app.
+                            This online document could not be previewed in-app.
                           </Text>
                           <TouchableOpacity
                             style={styles.pdfViewerRetryBtn}
-                            onPress={handleOpenExternal}
+                            onPress={() => {
+                              if (viewingPdf) void handleOpenPdf(viewingPdf);
+                            }}
                           >
-                            <Text style={styles.pdfViewerRetryBtnText}>Open with External App</Text>
+                            <Text style={styles.pdfViewerRetryBtnText}>Retry</Text>
                           </TouchableOpacity>
+                          <View style={styles.viewerErrorAdWrap}>
+                            <BannerAdWrapper size="rectangle" />
+                          </View>
                         </View>
                       )}
                     />
@@ -1941,6 +2345,11 @@ export default function App() {
               )}
             </View>
           )}
+
+          {/* Bottom Adsterra Banner inside Document Viewer for Max CPM */}
+          <View style={styles.pdfViewerAdBanner}>
+            <BannerAdWrapper />
+          </View>
         </View>
       </Modal>
 
@@ -1950,8 +2359,8 @@ export default function App() {
       {AdsterrRectModal}
       {InterstitialModal}
 
-      {/* Adsterra Popunder — fires once on mount, invisible             */}
-      <PopunderAdWrapper />
+      {/* Adsterra Popunder — fires on mount and on high-engagement user taps */}
+      <PopunderAdWrapper triggerKey={popunderTrigger} />
     </LinearGradient>
   );
 }
@@ -2630,6 +3039,22 @@ const styles = StyleSheet.create({
     color: COLORS.onDark,
     marginLeft: 2,
   },
+  purgeArchiveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9999,
+  },
+  purgeArchiveBtnText: {
+    fontFamily: FONT_SEMIBOLD,
+    fontSize: 11.5,
+    color: "#DC2626",
+    marginLeft: 2,
+  },
 
   searchBar: {
     flexDirection: "row",
@@ -2787,6 +3212,14 @@ const styles = StyleSheet.create({
     fontFamily: FONT_SEMIBOLD,
     fontSize: 11.5,
     color: COLORS.onDark,
+  },
+  editPdfBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   deletePdfBtn: {
     width: 28,
@@ -3289,5 +3722,158 @@ const styles = StyleSheet.create({
     fontFamily: FONT_SEMIBOLD,
     fontSize: 12.5,
     color: COLORS.onDark,
+  },
+  pdfViewerAdBanner: {
+    width: "100%",
+    backgroundColor: COLORS.surfaceCard,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  pdfTabBannerAd: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 6,
+    overflow: "hidden",
+  },
+  /* Ad Badges and Sponsored Containers */
+  adBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    alignSelf: "center",
+  },
+  adBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.mutedSoft,
+    marginRight: 5,
+  },
+  adBadgeText: {
+    fontSize: 9.5,
+    fontFamily: FONT_SEMIBOLD,
+    color: COLORS.mutedSoft,
+    letterSpacing: 0.8,
+  },
+  syncAdCard: {
+    marginTop: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    width: 320,
+    alignSelf: "center",
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  dashboardMidAdCard: {
+    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  dashboardBottomAdCard: {
+    marginTop: 8,
+    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  inFeedAdCard: {
+    marginVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  modalSheetAdBanner: {
+    width: "100%",
+    backgroundColor: COLORS.surfaceCard,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  modalEmptyAdWrap: {
+    marginTop: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyPdfAdWrap: {
+    marginTop: 18,
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfListFooterAd: {
+    marginTop: 12,
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  overlayAdWrap: {
+    marginTop: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinModalAdWrap: {
+    marginTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerErrorAdWrap: {
+    marginTop: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  liveIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.success,
+  },
+  liveIndicatorText: {
+    fontSize: 9,
+    fontFamily: FONT_BOLD,
+    letterSpacing: 0.8,
+    color: COLORS.success,
   },
 });
