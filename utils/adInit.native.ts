@@ -1,11 +1,6 @@
-import { useEffect } from "react";
-import mobileAds from "react-native-google-mobile-ads";
-
 /**
- * Initializes the Google Mobile Ads SDK on native platforms.
+ * Adsterra Ad initialization hook stub for native.
  */
 export function useMobileAdsInit(): void {
-  useEffect(() => {
-    void mobileAds().initialize();
-  }, []);
+  // No-op for Adsterra web/WebView ads
 }

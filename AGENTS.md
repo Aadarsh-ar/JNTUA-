@@ -8,7 +8,7 @@ There is no Expo Router, no `app/` directory, and no navigation library. The ent
 
 ### Core Directives
 
-- **SDK 54 Compatibility:** Expo SDK 54 is strictly mandatory. All added packages must be compatible with Expo SDK 54 and installed via `npx expo install`.
+- **SDK 57 Compatibility:** Expo SDK 57 is strictly mandatory. All added packages must be compatible with Expo SDK 57 and installed via `npx expo install`.
 - **Code Minimalism:** Prefer direct, concise implementation over abstractions. If a 5-line implementation achieves the exact result of a complex pattern, use the 5-line implementation.
 - **Strict Typing & Modularity:** TypeScript strict mode is enabled. Never use explicit or implicit `any` or unsafe casts (`as unknown as T`). Logic, styling, state management, and UI rendering must be cleanly decoupled.
 - **Mandatory Lint Gate:** A task is **never** complete until `npm run lint` passes with zero errors.
@@ -23,11 +23,11 @@ All work must strictly adhere to the project's installed configuration. The `pac
 
 | Component | Package | Version |
 |-----------|---------|---------|
-| Expo SDK | `expo` | `~54.0.35` |
-| React Native | `react-native` | `0.81.5` |
-| React | `react` / `react-dom` | `19.1.0` |
-| TypeScript | `typescript` | `~5.9.2` |
-| ESLint | `eslint` + `eslint-config-expo` | `^9.25.0` / `~10.0.0` |
+| Expo SDK | `expo` | `~57.0.0` |
+| React Native | `react-native` | `0.86.3` |
+| React | `react` / `react-dom` | `19.2.3` |
+| TypeScript | `typescript` | `~6.0.3` |
+| ESLint | `eslint` + `eslint-config-expo` | `^9.25.0` / `~57.0.2` |
 
 ### Actively Used Libraries
 
@@ -51,7 +51,7 @@ Do not remove an actively used package. Before every release, audit `package.jso
 - **Architecture:** `arm64-v8a` only. Never add `armeabi-v7a`, `x86`, or `x86_64` unless the user explicitly changes this project requirement.
 - **Minification:** Enabled in release builds (`enableMinifyInReleaseBuilds: true`)
 - **Resource shrinking:** Enabled in release builds (`enableShrinkResourcesInReleaseBuilds: true`)
-- **Android package:** `com.theadarsh15.JNTUAAttendance`
+- **Android package:** `com.steeveeswar.JNTUAAttendance`
 - **Permissions:** `INTERNET` (required for WebView portal access)
 - **Edge-to-edge:** Enabled (`edgeToEdgeEnabled: true`)
 - **Predictive back gesture:** Enabled (`predictiveBackGestureEnabled: true`)

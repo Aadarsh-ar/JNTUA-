@@ -12,12 +12,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "permissions": [
         "INTERNET"
       ],
-      "package": "com.theadarsh15.JNTUAAttendance"
+      "package": "com.steeveeswar.JNTUAAttendance"
     },
     "plugins": [
       [
@@ -44,18 +43,19 @@
           }
         }
       ],
-      "expo-font",
       [
-        "react-native-google-mobile-ads",
+        "expo-notifications",
         {
-          "androidAppId": "ca-app-pub-5291524891342004~2212450506",
-          "iosAppId": "ca-app-pub-5291524891342004~2212450506"
+          "icon": "./assets/images/splash-screen.png",
+          "color": "#0F172A",
+          "sounds": []
         }
-      ]
+      ],
+      "expo-font"
     ],
     "updates": {
-      "checkAutomatically": "NEVER",
-      "url": "https://u.expo.dev/995b4509-884e-4349-98a7-f6fdfc0fa8ab"
+      "url": "https://u.expo.dev/4fd4af8e-878e-43bf-935d-0ef1d2b00b46",
+      "checkAutomatically": "NEVER"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -64,13 +64,13 @@
       "reactCompiler": true
     },
     "ios": {
-      "bundleIdentifier": "com.theadarsh15.JNTUAAttendance"
+      "bundleIdentifier": "com.steeveeswar.JNTUAAttendance"
     },
+    "owner": "steeveeswar",
     "extra": {
       "eas": {
-        "projectId": "995b4509-884e-4349-98a7-f6fdfc0fa8ab"
+        "projectId": "4fd4af8e-878e-43bf-935d-0ef1d2b00b46"
       }
-    },
-    "owner": "theadarsh15s-team"
+    }
   }
 }

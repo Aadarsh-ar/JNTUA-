@@ -1,25 +1,26 @@
 import React from "react";
-import { View, StyleSheet, Linking } from "react-native";
+import { View, StyleSheet, Linking, StyleProp, ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import { ADSTERRA_CONFIG } from "./adConfig";
 
-interface Props {
-  adKey?: string;
+export interface SocialBarWrapperProps {
+  visible: boolean;
   height?: number;
+  style?: StyleProp<ViewStyle>;
   onAdFailedToLoad?: () => void;
 }
 
-const CHROME_USER_AGENT =
-  "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
-
-export function BannerAdWrapper({ adKey, height = 65, onAdFailedToLoad }: Props) {
-  const activeKey = adKey || ADSTERRA_CONFIG.bannerAdKey;
-
-  if (!ADSTERRA_CONFIG.enabled) {
-    return <View style={styles.emptyContainer} />;
+export function SocialBarWrapper({
+  visible,
+  height = ADSTERRA_CONFIG.socialBarHeight,
+  style,
+  onAdFailedToLoad,
+}: SocialBarWrapperProps) {
+  if (!ADSTERRA_CONFIG.enabled || !visible || !ADSTERRA_CONFIG.socialBarScriptUrl) {
+    return null;
   }
 
-  const adHtml = `<!DOCTYPE html>
+  const socialBarHtml = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8">
@@ -31,38 +32,26 @@ export function BannerAdWrapper({ adKey, height = 65, onAdFailedToLoad }: Props)
         padding: 0;
         width: 100%;
         height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
         background-color: transparent;
         overflow: hidden;
       }
     </style>
   </head>
   <body>
-    <script type="text/javascript">
-      atOptions = {
-        'key': '${activeKey}',
-        'format': 'iframe',
-        'height': ${ADSTERRA_CONFIG.bannerAdHeight},
-        'width': ${ADSTERRA_CONFIG.bannerAdWidth},
-        'params': {}
-      };
-    </script>
-    <script type="text/javascript" src="https://www.highperformanceformat.com/${activeKey}/invoke.js"></script>
+    <script src="${ADSTERRA_CONFIG.socialBarScriptUrl}"></script>
   </body>
 </html>`;
 
   return (
-    <View style={[styles.container, { height }]}>
+    <View style={[styles.container, { height }, style]}>
       <WebView
         originWhitelist={["*"]}
         source={{
-          html: adHtml,
-          baseUrl: "https://www.highperformanceformat.com",
+          html: socialBarHtml,
+          baseUrl: "https://pl30854907.profitableratecpmnetwork.com",
         }}
-        userAgent={CHROME_USER_AGENT}
+        userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+        androidLayerType="hardware"
         scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
@@ -72,13 +61,32 @@ export function BannerAdWrapper({ adKey, height = 65, onAdFailedToLoad }: Props)
         mixedContentMode="always"
         allowsInlineMediaPlayback={true}
         setSupportMultipleWindows={true}
+        onShouldStartLoadWithRequest={(request) => {
+          if (
+            request.url === "about:blank" ||
+            request.url.startsWith("https://pl30854907.profitableratecpmnetwork.com") ||
+            request.url.startsWith("data:")
+          ) {
+            return true;
+          }
+          if (request.isTopFrame) {
+            void Linking.openURL(request.url).catch(() => {});
+            return false;
+          }
+          return true;
+        }}
         onOpenWindow={(syntheticEvent) => {
           const { targetUrl } = syntheticEvent.nativeEvent;
           if (targetUrl) {
             void Linking.openURL(targetUrl).catch(() => {});
           }
         }}
-        onError={onAdFailedToLoad}
+        onError={(err) => {
+          if (__DEV__) {
+            console.warn("[Adsterra] Social bar load error:", err.nativeEvent);
+          }
+          onAdFailedToLoad?.();
+        }}
         style={[styles.webView, { height }]}
       />
     </View>
@@ -92,9 +100,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     backgroundColor: "transparent",
-  },
-  emptyContainer: {
-    height: 0,
   },
   webView: {
     width: "100%",

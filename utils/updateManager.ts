@@ -47,7 +47,6 @@ export function useUpdateManager(): UpdateManager {
   const checkingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setCheckingTimedOut(false);
     checkingStartTimeRef.current = isChecking ? Date.now() : null;
   }, [isChecking]);
 

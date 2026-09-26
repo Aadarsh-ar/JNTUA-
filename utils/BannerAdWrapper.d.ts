@@ -1,6 +1,7 @@
 import React from "react";
 
 export interface BannerAdWrapperProps {
+  adKey?: string;
   onAdFailedToLoad?: () => void;
 }
 

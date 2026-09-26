@@ -1,5 +1,6 @@
 
 interface Props {
+  adKey?: string;
   onAdFailedToLoad?: () => void;
 }
 
